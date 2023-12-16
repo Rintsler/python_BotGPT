@@ -1,31 +1,18 @@
-import asyncio
-import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from reg import register
+# -*- coding: utf-8 -*-
+from data.config import dp
 
 
-# Включаем логирование
-logging.basicConfig(level=logging.INFO)
-# Объект бота
-bot = Bot(token="6974809974:AAG9dnOZjqjfTpCnjmOng_rAOKCTmKzoO5E")
-# Диспетчер
-dp = Dispatcher(bot)
+async def on_startup(dp):
+    from utils.notify_admins import on_startup_notify
+    await on_startup_notify(dp)
+
+    from utils.set_bot_commands import set_default_commands
+    await set_default_commands(dp)
+
+    print('Бот запущен')
 
 
-@dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-    await message.answer("Привет!")
+if __name__ == '__main__':
+    from aiogram import executor
 
-
-
-
-
-# Запуск процесса поллинга новых апдейтов
-async def main():
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    executor.start_polling(dp, skip_updates=True)

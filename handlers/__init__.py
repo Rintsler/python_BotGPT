@@ -1,3 +1,1 @@
-from .users import dp
-
-__all__ = ['dp']
+from .keyboard import menu_keyboard, subscription_keyboard
