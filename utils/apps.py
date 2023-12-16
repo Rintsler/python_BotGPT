@@ -1,5 +1,5 @@
 import openai
-
+from handlers.comands import *
 from data.data_base import cursor
 
 
@@ -24,3 +24,15 @@ def generate_response(prompt):
     return response_texts
 
 
+def calculate_remaining_tokens(user_id):
+    # Замените "your_table_name" на фактическое имя вашей таблицы в базе данных
+    cursor.execute('SELECT tokens, tokens_used FROM users WHERE user_id = ?', (user_id,))
+    user_data = cursor.fetchone()
+
+    if user_data:
+        tokens, tokens_used = user_data
+        remaining_tokens = tokens - tokens_used
+        return remaining_tokens
+    else:
+        # Если пользователя с указанным user_id нет в базе данных
+        return None
