@@ -1,5 +1,4 @@
 import openai
-from handlers.comands import *
 from data.data_base import cursor
 
 
@@ -36,3 +35,4 @@ def calculate_remaining_tokens(user_id):
     else:
         # Если пользователя с указанным user_id нет в базе данных
         return None
+

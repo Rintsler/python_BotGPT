@@ -1,3 +1,5 @@
+from aiogram.types import Update
+
 from data.config import dp
 import datetime
 from aiogram import types

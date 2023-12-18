@@ -20,3 +20,21 @@ cursor.execute('''
     )
 ''')
 conn.commit()
+
+# функции для сохранения и получения истории сообщений ____________________________________________________________________
+def save_message(user_id, message_text):
+    conn = sqlite3.connect('messages.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO messages (user_id, message_text) VALUES (?, ?)', (user_id, message_text))
+    conn.commit()
+    conn.close()
+
+
+def get_message_history(user_id):
+    conn = sqlite3.connect('messages.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT message_text FROM messages WHERE user_id = ? ORDER BY rowid DESC LIMIT 5', (user_id,))
+    history = cursor.fetchall()
+    conn.close()
+    return [message[0] for message in history]
+# ________________________________________________________________________________________________________________________
