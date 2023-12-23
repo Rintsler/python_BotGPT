@@ -12,29 +12,15 @@ cursor.execute('''
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         username TEXT,
-        registration_date TEXT,
-        tokens INTEGER,
-        tokens_used INTEGER,
+        registration_date DATATIME,
+        chat_history TEXT,
+        response_history TEXT,
+        tokens INTEGER DEFAULT 0,
+        tokens_used INTEGER DEFAULT 0,
         subscribe INTEGER,
-        sub_date TEXT
+        sub_date DATATIME,
+        balance INTEGER DEFAULT 0,
+        remaining_tokens INTEGER DEFAULT 0
     )
 ''')
 conn.commit()
-
-# функции для сохранения и получения истории сообщений ____________________________________________________________________
-def save_message(user_id, message_text):
-    conn = sqlite3.connect('messages.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO messages (user_id, message_text) VALUES (?, ?)', (user_id, message_text))
-    conn.commit()
-    conn.close()
-
-
-def get_message_history(user_id):
-    conn = sqlite3.connect('messages.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT message_text FROM messages WHERE user_id = ? ORDER BY rowid DESC LIMIT 5', (user_id,))
-    history = cursor.fetchall()
-    conn.close()
-    return [message[0] for message in history]
-# ________________________________________________________________________________________________________________________
