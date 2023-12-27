@@ -4,7 +4,8 @@ import datetime
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ContentType, LabeledPrice
-from data.config import bot, dp, YOOTOKEN, SABMIT_CONST
+from data.bufer import Buf
+from data.config import bot, dp, YOOTOKEN
 from data.data_base import DB_PATH, conn
 from handlers.keyboard import menu_keyboard, main_menu_keyboard, inline_markup_submit
 from utils.apps import cursor, get_subscription_info, get_subscription_date, get_subscription, get_user, \
@@ -48,37 +49,6 @@ async def show_profile(message: types.Message):
 async def send_subscription_menu(message: types.Message):
     text = "Выберите тип подписки:"
     await message.answer(text, reply_markup=inline_markup_submit)
-
-
-# Обработчик для выбора подписки
-# @dp.message_handler(lambda message: message.text in ["Старт", "Комфорт", "Профи"])
-# async def handle_subscription_choice(message: types.Message):
-#     user_id = message.from_user.id
-#     subscribe_type = message.text
-#     sub_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#     # Определение количества токенов в зависимости от выбранной подписки
-#     if subscribe_type == "Старт":
-#         tokens = 10000
-#     elif subscribe_type == "Комфорт":
-#         tokens = 50000
-#     elif subscribe_type == "Профи":
-#         tokens = 100000
-#     else:
-#         # Если подписка не распознана, обработайте это по вашему усмотрению
-#         tokens = 0
-#     # Здесь вам нужно выполнить запись в базу данных
-#     # Например:
-#     conn = sqlite3.connect(DB_PATH)
-#     cursor = conn.cursor()
-#     cursor.execute('''
-#         UPDATE users
-#         SET subscribe = ?, sub_date = ?, tokens = ?
-#         WHERE user_id = ?
-#     ''', (subscribe_type, sub_date, tokens, user_id))
-#     conn.commit()
-#
-#     response_text = f'Вы выбрали подписку тариф {subscribe_type}. Вам доступно {tokens} токенов. Спасибо!'
-#     await message.answer(response_text, reply_markup=menu_keyboard)
 
 
 @dp.message_handler(commands=['start', 'help'])
@@ -154,6 +124,16 @@ async def create_chat(message: types.Message):
 
     await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.", reply_markup=menu_keyboard)
 
+@dp.message_handler(commands=['dalle'])
+async def send_image(message: types.Message):
+    api_key = get_unused_key()
+    response = openai.Image.create(
+        api_key=api_key,
+        prompt=message.text,
+        n=1,
+        size="1024x1024",
+    )
+    await message.answer_photo(response["data"][0]["url"])
 
 @dp.message_handler()
 async def process_question(message: types.Message, state: FSMContext):
@@ -166,6 +146,11 @@ async def process_question(message: types.Message, state: FSMContext):
         if user:
             user_question = message.text
             print(f"User question: {user_question}")
+
+            # Если команда /dalle встречается в тексте сообщения, вызываем функцию send_image
+            if "/dalle" in user_question:
+                await send_image(message)
+                return
 
             # Отправляем анимацию перед запросом к OpenAI GPT
             processing_message = await message.answer("🔄 Обработка запроса...")
@@ -224,7 +209,7 @@ async def submit_start(call: types.CallbackQuery):
                            payload="month_sub", provider_token=YOOTOKEN, currency="RUB",
                            start_parameter="test_bot",
                            prices=[LabeledPrice(label="Руб", amount=15000)])
-    SABMIT_CONST = "Старт"
+    Buf.name = "Старт"
 
 
 @dp.callback_query_handler(text='komf')
@@ -235,7 +220,7 @@ async def submit_komf(call: types.CallbackQuery):
                            payload="month_sub", provider_token=YOOTOKEN, currency="RUB",
                            start_parameter="test_bot",
                            prices=[LabeledPrice(label="Руб", amount=50000)])
-    SABMIT_CONST = "Комфорт"
+    Buf.name = "Комфорт"
 
 
 @dp.callback_query_handler(text='pro')
@@ -249,7 +234,7 @@ async def submit_pro(call: types.CallbackQuery):
                            currency="RUB",
                            start_parameter="test_bot",
                            prices=[LabeledPrice(label="Руб", amount=100000)])
-    SABMIT_CONST = "Профи"
+    Buf.name = "Профи"
 
 
 # Декоратор - ответ сервису на наличие товара
@@ -264,10 +249,10 @@ async def process_pay(message: types.Message):
     if message.successful_payment.invoice_payload == "month_sub":
         # Подписываем пользователя
         user_id = message.from_user.id
-        subscribe_type = message.text
+        subscribe_type = Buf.name
         sub_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Определение количества токенов в зависимости от выбранной подписки
-        match SABMIT_CONST:
+        match Buf.name:
             case 'Старт':
                 tokens = 10000
             case 'Комфорт':

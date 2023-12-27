@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 import openai
 from data.data_base import cursor
 from aiogram.dispatcher.filters.state import State, StatesGroup
+import traceback
+import time
+
+from utils.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, handle_rate_limit_error
 
 
 # Состояние
@@ -12,14 +16,12 @@ class UserStates(StatesGroup):
 
 
 def get_user_balance(user_id):
-    # Замените 'ваша_таблица_user_balance' на реальное имя таблицы в вашей базе данных
     cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     return result[0] if result else 0  # Если пользователь не найден, возвращаем 0
 
 
 def get_subscription_info(user_id):
-    # Замените 'вашатаблица_subscription_info' на реальное имя таблицы в вашей базе данных
     cursor.execute('SELECT tokens, tokens_used, registration_date FROM users WHERE user_id = ?',
                    (user_id,))
     result = cursor.fetchone()
@@ -52,14 +54,12 @@ def calculate_remaining_days(registration_date):
 
 
 def get_subscription(user_id):
-    # Замените 'ваша_таблица_subscription_info' на реальное имя таблицы в вашей базе данных
     cursor.execute('SELECT subscribe FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     return result[0] if result else 0  # Если пользователь не найден, возвращаем 0
 
 
 def get_user(user_id):
-    # Замените 'ваша_таблица_subscription_info' на реальное имя таблицы в вашей базе данных
     cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     print("user_id: ", result)
@@ -67,39 +67,81 @@ def get_user(user_id):
 
 
 def get_subscription_date(user_id):
-    # Замените 'ваша_таблица_subscription_info' на реальное имя таблицы в вашей базе данных
     cursor.execute('SELECT sub_date FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     return result[0] if result else 0  # Если пользователь не найден, возвращаем 0
 
 
-def generate_response(chat_history, user_id):
-    get_user(user_id)
-    system_message = {"role": "system", "content": "You are a helpful assistant"}
-    messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=messages,
-        temperature=0.8,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
-    )
-    otvet = response['choices'][0]['message']['content'].strip()
-    tokens_used = len(otvet)
-    print(tokens_used)
-    # Обновляем столбец tokens_used в базе данных
-    conn_tok = sqlite3.connect("users.db")
-    cursor_tok = conn_tok.cursor()
-    cursor_tok.execute('''
-        UPDATE users
-        SET tokens_used = tokens_used + ?
-        WHERE user_id = ?
-    ''', (tokens_used, user_id))
-    print("записвыаю")
-    conn_tok.commit()
-    conn_tok.close()
-    return otvet
+def generate_response(chat_history, user_id, message):
+    api_key = get_unused_key()
+    while not api_key:
+        # print("Нет свободных ключей")
+        time.sleep(10)
+        api_key = get_unused_key()
+    try:
+        update_key_status(api_key, 1)
+
+        system_message = {"role": "system", "content": "You are a helpful assistant"}
+        messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            api_key=api_key,
+            messages=messages,
+            temperature=0.8,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+        )
+        otvet = response['choices'][0]['message']['content'].strip()
+        tokens_used = len(otvet)
+        print(tokens_used)
+        # Обновляем столбец tokens_used в базе данных
+        conn_tok = sqlite3.connect("users.db")
+        cursor_tok = conn_tok.cursor()
+        cursor_tok.execute('''
+            UPDATE users
+            SET tokens_used = tokens_used + ?
+            WHERE user_id = ?
+        ''', (tokens_used, user_id))
+        print("записвыаю")
+        conn_tok.commit()
+        conn_tok.close()
+        reset_key_status(api_key)
+        return otvet
+    except (openai.error.RateLimitError, openai.error.Timeout) as e:
+        error_text = traceback.format_exc()
+        print(f"Ошибка RateLimit: {e}")
+        log_error(api_key, error_text)
+        return handle_rate_limit_error(api_key, chat_history, user_id, message)
+
+
+# def generate_response(chat_history, user_id):
+#     get_user(user_id)
+#     system_message = {"role": "system", "content": "You are a helpful assistant"}
+#     messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
+#     response = openai.ChatCompletion.create(
+#         model="gpt-3.5-turbo",
+#         messages=messages,
+#         temperature=0.8,
+#         top_p=1,
+#         frequency_penalty=0,
+#         presence_penalty=0
+#     )
+#     otvet = response['choices'][0]['message']['content'].strip()
+#     tokens_used = len(otvet)
+#     print(tokens_used)
+#     # Обновляем столбец tokens_used в базе данных
+#     conn_tok = sqlite3.connect("users.db")
+#     cursor_tok = conn_tok.cursor()
+#     cursor_tok.execute('''
+#         UPDATE users
+#         SET tokens_used = tokens_used + ?
+#         WHERE user_id = ?
+#     ''', (tokens_used, user_id))
+#     print("записываю")
+#     conn_tok.commit()
+#     conn_tok.close()
+#     return otvet
 
 
 def calculate_remaining_tokens(user_id):
