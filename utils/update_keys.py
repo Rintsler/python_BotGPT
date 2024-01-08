@@ -20,7 +20,7 @@ def handle_rate_limit_error(api_key, chat_history, user_id, message):
     api_key = get_unused_key()
     print("Пытаюсь отправить второй раз2")
     while not api_key:
-        # print("Нет свободных ключей")
+        #print("Нет свободных ключей")
         time.sleep(10)
         api_key = get_unused_key()
     try:

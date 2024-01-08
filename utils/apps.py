@@ -2,19 +2,10 @@ import datetime
 import sqlite3
 from datetime import datetime, timedelta
 import openai
-from openai import RateLimitError
-
 from data.data_base import cursor
-from aiogram.dispatcher.filters.state import State, StatesGroup
 import traceback
 import time
-
 from utils.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, handle_rate_limit_error
-
-
-# Состояние
-# class UserStates(StatesGroup):
-#     FIRST_MESSAGE = State()
 
 
 def get_user_balance(user_id):
@@ -92,14 +83,14 @@ def get_subscription_date(user_id):
 def generate_response(chat_history, user_id, message):
     api_key = get_unused_key()
     while not api_key:
+        # print("Нет свободных ключей")
         time.sleep(10)
         api_key = get_unused_key()
     try:
         update_key_status(api_key, 1)
 
         system_message = {"role": "system", "content": "You are a helpful assistant"}
-        messages = [system_message] + chat_history[-5:]
-
+        messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             api_key=api_key,
@@ -111,7 +102,8 @@ def generate_response(chat_history, user_id, message):
         )
         otvet = response['choices'][0]['message']['content'].strip()
         tokens_used = len(otvet)
-
+        print(tokens_used)
+        # Обновляем столбец tokens_used в базе данных
         conn_tok = sqlite3.connect("users.db")
         cursor_tok = conn_tok.cursor()
         cursor_tok.execute('''
@@ -119,21 +111,16 @@ def generate_response(chat_history, user_id, message):
             SET tokens_used = tokens_used + ?
             WHERE user_id = ?
         ''', (tokens_used, user_id))
+        print("записвыаю")
         conn_tok.commit()
         conn_tok.close()
         reset_key_status(api_key)
         return otvet
-    except openai.OpenAIError as e:
+    except (openai.error.RateLimitError, openai.error.Timeout) as e:
         error_text = traceback.format_exc()
-        print(f"Ошибка OpenAI: {e}")
+        print(f"Ошибка RateLimit: {e}")
         log_error(api_key, error_text)
-        return handle_openai_error(api_key, chat_history, user_id, message)
-
-
-def handle_openai_error(api_key, chat_history, user_id, message):
-    error_text = "Необработанная ошибка OpenAI. Пожалуйста, свяжитесь с администратором."
-    log_error(api_key, error_text)
-    return error_text
+        return handle_rate_limit_error(api_key, chat_history, user_id, message)
 
 
 # def generate_response(chat_history, user_id):

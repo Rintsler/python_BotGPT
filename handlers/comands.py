@@ -287,7 +287,6 @@ async def process_question(message: types.Message):
     user_id = message.from_user.id
     free_req = get_free_request(user_id)
     user_question = message.text
-    user_history, response_history = ['', '']
     print(f"User question: {user_question}")
     if (get_user(user_id) and get_subscription(user_id)) or free_req != 0:
         # Если команда /dalle встречается в тексте сообщения, вызываем функцию send_image
@@ -300,9 +299,9 @@ async def process_question(message: types.Message):
 
         # Получаем текущую историю пользователя
         cursor.execute('SELECT chat_history, response_history FROM users WHERE user_id = ?', (user_id,))
-        if cursor.fetchone():
-            user_history, response_history = cursor.fetchone()
-        user_history = json.loads(user_history) if user_history else []
+        user_history, response_history = cursor.fetchone()
+        if user_history is not None:
+            user_history = json.loads(user_history) if user_history else []
         response_history = json.loads(response_history) if response_history else []
 
         # Добавляем новое сообщение к истории
