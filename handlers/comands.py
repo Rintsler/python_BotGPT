@@ -300,8 +300,7 @@ async def process_question(message: types.Message):
         # Получаем текущую историю пользователя
         cursor.execute('SELECT chat_history, response_history FROM users WHERE user_id = ?', (user_id,))
         user_history, response_history = cursor.fetchone()
-        if user_history is not None:
-            user_history = json.loads(user_history) if user_history else []
+        user_history = json.loads(user_history) if user_history else []
         response_history = json.loads(response_history) if response_history else []
 
         # Добавляем новое сообщение к истории
