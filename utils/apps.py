@@ -47,13 +47,13 @@ def calculate_remaining_days(registration_date):
 
 
 def get_free_request(user_id):
-    cursor.execute('SELECT free_request FROM users_free WHERE user_id = ?', (user_id,))
+    cursor.execute('SELECT free_request FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     return result[0] if result else 0  # Если пользователь не найден, возвращаем 0
 
 
 def free_req_true(user_id):
-    cursor.execute('SELECT flag FROM users_free WHERE user_id = ?', (user_id,))
+    cursor.execute('SELECT flag FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     return result[0] if result else 0  # Если пользователь не найден, возвращаем 0
 
@@ -65,13 +65,13 @@ def get_subscription(user_id):
 
 
 def get_user(user_id):
-    cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
-    result = cursor.fetchone()
-    if result is None:
+    cursor.execute('SELECT user_id, flag FROM users WHERE user_id = ?', (user_id,))
+    user, flag = cursor.fetchone()
+    if (user is None) and (flag != 2):
         print("Пользователя нет в БД")
     else:
-        print("User_id: ", result)
-    return result
+        print("User_id: ", user)
+    return user
 
 
 def get_subscription_date(user_id):

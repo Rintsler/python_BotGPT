@@ -20,14 +20,7 @@ cursor.execute('''
         subscribe INTEGER,
         sub_date DATATIME,
         balance INTEGER DEFAULT 0,
-        remaining_tokens INTEGER DEFAULT 0
-    );
-''')
-
-# Создаем таблицу пользователей free, если ее нет
-cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users_free (
-        user_id INTEGER,
+        remaining_tokens INTEGER DEFAULT 0,
         free_request INTEGER DEFAULT 0,
         flag INTEGER DEFAULT 0
     );

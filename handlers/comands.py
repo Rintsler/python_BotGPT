@@ -22,18 +22,18 @@ async def send_welcome(message: types.Message):
         "У вас есть 5 бесплатных запросов к боту."
         "Для расширения функционала вам надо зарегистрироваться."
     )
-    free_req = get_free_request(user_id)
+    free_request = get_free_request(user_id)
     flag = free_req_true(user_id)
-    if (free_req and flag) == 0:
+    if (free_request and flag) == 0:
         cursor.execute('''
-                        INSERT INTO users_free (user_id, free_request, flag)
+                        INSERT INTO users (user_id, free_request, flag)
                         VALUES (?, ?, ?)
                     ''', (user_id, 5, 1))
         conn.commit()
         await message.answer(text, reply_markup=menu_keyboard_free)
     else:
         await message.answer(
-            f"Бесплатные запросов осталось {free_req}. Оформите подписку для дальнейшего использования бота.",
+            f"Бесплатные запросов осталось {free_request}. Оформите подписку для дальнейшего использования бота.",
             reply_markup=inline_markup_submit)
 
 
@@ -228,17 +228,17 @@ async def process_registration(call: types.CallbackQuery):
     registration_date = call.message.date
 
     # Проверяем, зарегистрирован ли пользователь
-    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
-    existing_user = cursor.fetchone()
+    # cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    # existing_user = cursor.fetchone()
 
-    if existing_user:
+    if get_user(user_id):
         response_text = "Вы уже зарегистрированы."
     else:
         # Регистрируем нового пользователя
         cursor.execute('''
-            INSERT INTO users (user_id, username, registration_date)
-            VALUES (?, ?, ?)
-        ''', (user_id, username, registration_date))
+            INSERT INTO users (user_id, username, registration_date, flag)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, username, registration_date, 2))
         conn.commit()
         response_text = "Регистрация успешна!"
 
@@ -285,10 +285,10 @@ async def process_successful_payment(message: types.Message):
 @dp.message_handler()
 async def process_question(message: types.Message):
     user_id = message.from_user.id
-    free_req = get_free_request(user_id)
+    free_request = get_free_request(user_id)
     user_question = message.text
     print(f"User question: {user_question}")
-    if (get_user(user_id) and get_subscription(user_id)) or free_req != 0:
+    if (get_user(user_id) and get_subscription(user_id)) or free_request != 0:
         # Если команда /dalle встречается в тексте сообщения, вызываем функцию send_image
         if "/dalle" in user_question:
             await send_image(message)
@@ -300,11 +300,18 @@ async def process_question(message: types.Message):
         # Получаем текущую историю пользователя
         cursor.execute('SELECT chat_history, response_history FROM users WHERE user_id = ?', (user_id,))
         user_history, response_history = cursor.fetchone()
+
         user_history = json.loads(user_history) if user_history else []
         response_history = json.loads(response_history) if response_history else []
 
         # Добавляем новое сообщение к истории
         user_history.append({"role": "user", "content": user_question})
+
+        # Теперь можем сохранить обновленные данные в базу
+        cursor.execute('UPDATE users SET chat_history=?, response_history=? WHERE user_id=?',
+                       (json.dumps(user_history, ensure_ascii=False), json.dumps(response_history, ensure_ascii=False),
+                        user_id))
+        conn.commit()
 
         # Обновляем историю в базе данных
         cursor.execute('''
@@ -332,7 +339,8 @@ async def process_question(message: types.Message):
         response_history.append({"role": "assistant", "content": response})
         cursor.execute('''
                         UPDATE users
-                        SET response_history = ?
+                        SET response_history = ?,
+                            free_request = free_request - 1
                         WHERE user_id = ?
                     ''', (json.dumps(response_history, ensure_ascii=False), user_id))
         conn.commit()
