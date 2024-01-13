@@ -46,11 +46,11 @@ async def send_subscription_menu(message: types.Message):
     user_id = message.from_user.id
     # Проверяем есть ли пользователь в базе
     if get_user(user_id):
-        if get_subscription(user_id) is None:
-            await message.answer("Выберите тип подписки:", reply_markup=inline_markup_submit)
+        subscription = get_subscription(user_id)
+        if subscription[0]:
+            await message.answer(f"У вас действует подписка {subscription}. Для информации используйте меню 📝 Токены")
         else:
-            subscription = get_subscription(user_id)
-            await message.answer(f"У вас действует подписка {subscription}. Для инвормации используйте меню 📝 Токены")
+            await message.answer("Выберите тип подписки:", reply_markup=inline_markup_submit)
     else:
         await message.answer("Для этого необходима регистрация в нашем боте.", reply_markup=inline_markup_reg)
 
@@ -78,19 +78,18 @@ async def show_profile(message: types.Message):
     if get_user(user_id):
         # Получаем информацию о пользователе
         cursor.execute('SELECT user_id, registration_date FROM users WHERE user_id = ?', (user_id,))
-        user_info = cursor.fetchone()
-        user_id, registration_date = user_info
-
+        user_id, registration_date = cursor.fetchone()
+        if registration_date is None:
+            registration_date = 'нет'
         # Функция для получения баланса пользователя
         balance = get_user_balance(user_id)
-
-        # Функция для получения информации о подписке пользователя
+        subscription = get_subscription(user_id)
         subscription_info = get_subscription_info(user_id)
-        if get_subscription(user_id):
-            subscription = get_subscription(user_id)
-        else:
+        # Функция для получения информации о подписке пользователя
+        if subscription[0] is None:
             subscription = "Нет"
-        sub_date = get_subscription_date(user_id)
+        if subscription_info is None:
+            subscription_info = "нет"
 
         profile_text = (
             f"📊 Ваш профиль:\n"

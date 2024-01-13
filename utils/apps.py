@@ -15,12 +15,10 @@ def get_user_balance(user_id):
 
 
 def get_subscription_info(user_id):
-    cursor.execute('SELECT tokens, tokens_used, registration_date FROM users WHERE user_id = ?',
-                   (user_id,))
-    result = cursor.fetchone()
-    if result:
-        tokens, tokens_used, registration_date = result
-        remaining_tokens = tokens - tokens_used  # Перемещено сюда, после присвоения значений переменным
+    cursor.execute('SELECT tokens, tokens_used, registration_date FROM users WHERE user_id = ?', (user_id,))
+    tokens, tokens_used, registration_date = cursor.fetchone()
+    remaining_tokens = tokens - tokens_used  # Перемещено сюда, после присвоения значений переменным
+    if registration_date:
         remaining_days = calculate_remaining_days(registration_date)
         return {
             "tokens": tokens,
@@ -29,8 +27,12 @@ def get_subscription_info(user_id):
             "remaining_days": remaining_days
         }
     else:
-        return {"tokens": 0, "tokens_used": 0, "remaining_tokens": 0,
-                "remaining_days": 0}  # Если пользователь не найден, возвращаем 0
+        return {
+            "tokens": 0,
+            "tokens_used": 0,
+            "remaining_tokens": 0,
+            "remaining_days": 0
+        }  # Если пользователь не найден, возвращаем 0
 
 
 def calculate_remaining_days(registration_date):
@@ -66,12 +68,10 @@ def get_subscription(user_id):
 
 def get_user(user_id):
     cursor.execute('SELECT user_id, flag FROM users WHERE user_id = ?', (user_id,))
-    user, flag = cursor.fetchone()
-    if (user is None) and (flag != 2):
-        print("Пользователя нет в БД")
-    else:
-        print("User_id: ", user)
-    return user
+    result = cursor.fetchone()
+    if result:
+        user, flag = result
+        return user
 
 
 def get_subscription_date(user_id):
@@ -121,35 +121,6 @@ def generate_response(chat_history, user_id, message):
         print(f"Ошибка RateLimit: {e}")
         log_error(api_key, error_text)
         return handle_rate_limit_error(api_key, chat_history, user_id, message)
-
-
-# def generate_response(chat_history, user_id):
-#     get_user(user_id)
-#     system_message = {"role": "system", "content": "You are a helpful assistant"}
-#     messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
-#     response = openai.ChatCompletion.create(
-#         model="gpt-3.5-turbo",
-#         messages=messages,
-#         temperature=0.8,
-#         top_p=1,
-#         frequency_penalty=0,
-#         presence_penalty=0
-#     )
-#     otvet = response['choices'][0]['message']['content'].strip()
-#     tokens_used = len(otvet)
-#     print(tokens_used)
-#     # Обновляем столбец tokens_used в базе данных
-#     conn_tok = sqlite3.connect("users.db")
-#     cursor_tok = conn_tok.cursor()
-#     cursor_tok.execute('''
-#         UPDATE users
-#         SET tokens_used = tokens_used + ?
-#         WHERE user_id = ?
-#     ''', (tokens_used, user_id))
-#     print("записываю")
-#     conn_tok.commit()
-#     conn_tok.close()
-#     return otvet
 
 
 def calculate_remaining_tokens(user_id):

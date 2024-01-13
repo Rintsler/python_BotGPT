@@ -17,7 +17,7 @@ cursor.execute('''
         response_history TEXT NOT NULL DEFAULT '[]',
         tokens INTEGER DEFAULT 0,
         tokens_used INTEGER DEFAULT 0,
-        subscribe INTEGER,
+        subscribe TEXT,
         sub_date DATATIME,
         balance INTEGER DEFAULT 0,
         remaining_tokens INTEGER DEFAULT 0,

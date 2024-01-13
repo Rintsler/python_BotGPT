@@ -8,7 +8,7 @@ import schedule
 from threading import Thread
 
 
-def handle_rate_limit_error(api_key, chat_history, user_id, message):
+def handle_rate_limit_error(api_key, chat_history, message):
     user_id = message.from_user.id  # Обратите внимание, что вы уже определили user_id в функции
     dbkey_connection = sqlite3.connect('keys.db')
     dbkey_cursor = dbkey_connection.cursor()
@@ -20,7 +20,7 @@ def handle_rate_limit_error(api_key, chat_history, user_id, message):
     api_key = get_unused_key()
     print("Пытаюсь отправить второй раз2")
     while not api_key:
-        #print("Нет свободных ключей")
+        # print("Нет свободных ключей")
         time.sleep(10)
         api_key = get_unused_key()
     try:
@@ -58,7 +58,7 @@ def handle_rate_limit_error(api_key, chat_history, user_id, message):
         error_text = traceback.format_exc()
         print(f"Ошибка RateLimit: {e}")
         log_error(api_key, error_text)
-        return handle_rate_limit_error(api_key, chat_history, user_id, message)
+        return handle_rate_limit_error(api_key, chat_history, message)
 
 
 def update_expired_keys():
