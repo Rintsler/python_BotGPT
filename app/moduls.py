@@ -10,7 +10,7 @@ from data.db_app import calculate_remaining_tokens, update_tokens_used
 async def get_subscription_info(user_id, sub_date):
     remaining_tokens = await calculate_remaining_tokens(user_id)
     if sub_date:
-        remaining_days = calculate_remaining_days(sub_date)
+        remaining_days = await calculate_remaining_days(sub_date)
         return {
             "remaining_tokens": remaining_tokens,
             "remaining_days": remaining_days

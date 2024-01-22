@@ -268,7 +268,7 @@ async def calculate_remaining_tokens(user_id):
             WHERE user_id = ?
             ''', (user_id,))
             result = await cursor.fetchone()
-            if result:
+            if result is not None:
                 tokens, tokens_used = result
                 remaining_tokens = tokens - tokens_used
                 await db.execute('''
@@ -277,6 +277,7 @@ async def calculate_remaining_tokens(user_id):
                             WHERE user_id = ?
                             ''', (remaining_tokens, user_id))
                 await db.commit()
+                print(remaining_tokens)
                 return remaining_tokens
             else:
                 return 0
