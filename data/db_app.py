@@ -295,7 +295,7 @@ async def get_subscribe(user_id):
             WHERE user_id = ?
             ''', (user_id,))
             result = await cursor.fetchone()
-            return result
+            return result[0]
     except Exception as e:
         print(f"Ошибка calculate_remaining_tokens: {e}")
         return None

@@ -9,7 +9,7 @@ from app.moduls import get_subscription_info, generate_response
 from app.update_keys import get_unused_key
 from data.config import bot
 from data.db_app import add_user, reg_user, get_flag, new_chat, get_user_history, update_user_history, \
-    add_response_to_history, get_user, calculate_remaining_tokens
+    add_response_to_history, get_user, calculate_remaining_tokens, get_subscribe
 
 user = B()
 
@@ -85,9 +85,10 @@ async def echo(message: types.Message):
     # ==================================================================================================================
     if text in ['💰 Подписка']:
         # Проверяем есть ли пользователь в базе
+        user.subscribe = await get_subscribe(user.user_id)
         if user.subscribe is not None:
             await message.answer(
-                f"У вас действует подписка {B.subscribe}. Для информации используйте меню 📝 Токены")
+                f"У вас действует подписка {user.subscribe}. Для информации используйте меню 📝 Токены")
         else:
             await message.answer("Выберите тип подписки:", reply_markup=inline_markup_submit)
     # ==================================================================================================================
