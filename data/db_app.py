@@ -1,4 +1,6 @@
 import json
+import traceback
+
 import aiosqlite
 from sqlalchemy.ext.declarative import declarative_base
 from data.bufer import B
@@ -217,16 +219,17 @@ async def update_user_history(user_id, user_history, response_history):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-            UPDATE users
-            SET chat_history = ?,
-                response_history = ?
-            WHERE user_id = ?
-        ''', (json.dumps(user_history, ensure_ascii=False),
-              json.dumps(response_history, ensure_ascii=False),
-              user_id))
-        await db.commit()
+                                UPDATE users
+                                SET chat_history = ?,
+                                    response_history = ?
+                                WHERE user_id = ?
+                            ''', (
+                json.dumps(user_history, ensure_ascii=False), json.dumps(response_history, ensure_ascii=False),
+                user_id))
+            await db.commit()
     except Exception as e:
         print(f"Ошибка при обновлении истории чата: {e}")
+        traceback.print_exc()
         return None
 
 
@@ -277,7 +280,7 @@ async def calculate_remaining_tokens(user_id):
                             WHERE user_id = ?
                             ''', (remaining_tokens, user_id))
                 await db.commit()
-                print(remaining_tokens)
+                print("remaining_tokens: ", remaining_tokens)
                 return remaining_tokens
             else:
                 return 0

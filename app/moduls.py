@@ -41,7 +41,7 @@ async def calculate_remaining_days(registration_date):
 async def generate_response(user_id, chat_history, message):
     api_key = await get_unused_key()
     while not api_key:
-        # print("Нет свободных ключей")
+        print("Нет свободных ключей")
         time.sleep(10)
         api_key = await get_unused_key()
     try:
@@ -60,10 +60,12 @@ async def generate_response(user_id, chat_history, message):
         )
         otvet = response['choices'][0]['message']['content'].strip()
         tokens_used = len(otvet)
-        print(tokens_used)
+        print("tokens_used: ", tokens_used)
         # Обновляем столбец tokens_used в базе данных
         await update_tokens_used(tokens_used, user_id)
-        print("записвыаю")
+        print("Обновляем столбец tokens_used в базе данных")
+        await calculate_remaining_tokens(user_id)
+        print("Обновляем столбец remaining_tokens в базе данных")
         await reset_key_status(api_key)
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
