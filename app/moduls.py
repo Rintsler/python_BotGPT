@@ -24,7 +24,8 @@ async def get_subscription_info(user_id, sub_date):
 
 async def calculate_remaining_days(registration_date):
     try:
-        db_datetime = datetime.strptime(registration_date, "%Y-%m-%d %H:%M:%S")
+        # db_datetime = datetime.strptime(registration_date, "%Y-%m-%d %H:%M:%S")
+        db_datetime = datetime.strptime(registration_date, "%Y-%m-%d %H:%M")
         current_date = datetime.now()
 
         # Рассчитываем разницу в днях
