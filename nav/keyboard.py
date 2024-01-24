@@ -1,16 +1,9 @@
-from aiogram import Bot
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+import operator
 
-
-async def set_commands(bot: Bot):
-    commands = [
-        BotCommand(
-            command='pay',
-            description='Оплата подписки'
-        )
-    ]
-
+from aiogram_dialog.widgets.kbd import Multiselect
+from aiogram_dialog.widgets.text import Format
 
 menu_keyboard_free = ReplyKeyboardMarkup(
     keyboard=[
@@ -18,10 +11,10 @@ menu_keyboard_free = ReplyKeyboardMarkup(
             KeyboardButton(text="📝 Тарифы"),
             KeyboardButton(text="⚙️ HELP"),
         ],
-        # [
-        #     KeyboardButton(text="📝 Остаток запросов"),
-        #     KeyboardButton(text="👥 Создать чат"),
-        # ]
+        [
+            # KeyboardButton(text="📝 Остаток запросов"),
+            KeyboardButton(text="👥 Создать чат")
+        ]
     ],
     resize_keyboard=True
 )
@@ -46,19 +39,13 @@ menu_keyboard = ReplyKeyboardMarkup(
 inline_markup_submit = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Старт", callback_data="st"),
-            InlineKeyboardButton(text="Комфорт", callback_data="komf"),
-            InlineKeyboardButton(text="Профи", callback_data="pro")
+            InlineKeyboardButton(text="Оформить подписку", callback_data='submit'),
+            # InlineKeyboardButton(text="Комфорт", callback_data="komf"),
+            # InlineKeyboardButton(text="Профи", callback_data="pro")
         ]
     ],
+    resize_keyboard=True
 )
-
-# inline_markup_submit = InlineKeyboardMarkup(row_width=3)
-#
-# st = InlineKeyboardButton(text="Старт", callback_data="st")
-# komf = InlineKeyboardButton(text="Комфорт", callback_data="komf")
-# pro = InlineKeyboardButton(text="Профи", callback_data="pro")
-# inline_markup_submit.add(st, komf, pro)
 
 # ======================================================================================================================
 # InLine Button регистрация
@@ -69,8 +56,54 @@ inline_markup_reg = InlineKeyboardMarkup(
             InlineKeyboardButton(text='👤 Регистрация', callback_data="reg")
         ]
     ],
+    resize_keyboard=True
 )
 
-# inline_markup_reg = InlineKeyboardMarkup(row_width=1)
-# reg = InlineKeyboardButton(text="👤 Регистрация", callback_data="reg")
-# inline_markup_reg.insert(reg)
+# ======================================================================================================================
+# ЧЕК-БОКСЫ
+# ======================================================================================================================
+
+inline_gen_text = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Генерация текста", callback_data="gen_text")
+        ]
+    ],
+    resize_keyboard=True
+)
+
+inline_gen_post = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Генерация постов", callback_data="gen_post")
+        ]
+    ],
+    resize_keyboard=True
+)
+
+inline_gen_img = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Генерация изображения", callback_data="gen_img")
+        ]
+    ],
+    resize_keyboard=True
+)
+
+inline_itog = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Расчитать стоимость", callback_data="itog")
+        ]
+    ],
+    resize_keyboard=True
+)
+
+inline_pay = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Оплатить", callback_data="pay")
+        ]
+    ],
+    resize_keyboard=True
+)

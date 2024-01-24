@@ -1,23 +1,26 @@
 from aiogram import F
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, callback_data
 from aiogram.filters.command import Command
 from data.config import bot
-from data.controllers import start_cmd, send_image, echo, registration
+from data.controllers import start_cmd, send_image, echo, registration, user
 from data.db_app import update_subscribe
-from data.pay import order_st, order_komf, order_pro, user
+from data.pay import order_submit, order_gen_img, order_gen_post, order_gen_text, order_itog, order
 from aiogram import types
 from datetime import datetime
 from nav.keyboard import menu_keyboard
 
-router: Router = Router()
 
+router: Router = Router()
 router.message.register(start_cmd, CommandStart())
 router.message.register(send_image, Command('dalle'))
 router.callback_query.register(registration, F.data == 'reg')
-router.callback_query.register(order_st, F.data == 'st')
-router.callback_query.register(order_komf, F.data == 'komf')
-router.callback_query.register(order_pro, F.data == 'pro')
+router.callback_query.register(order_submit, F.data == 'submit')
+router.callback_query.register(order_gen_text, F.data == 'gen_text')
+router.callback_query.register(order_gen_post, F.data == 'gen_post')
+router.callback_query.register(order_gen_img, F.data == 'gen_img')
+router.callback_query.register(order_itog, F.data == 'itog')
+router.callback_query.register(order, F.data == 'pay')
 
 
 # ======================================================================================================================

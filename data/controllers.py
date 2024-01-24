@@ -1,20 +1,19 @@
 import json
-
-import aiosqlite
 import openai
 from aiogram import types
-from data.bufer import B
-from nav.keyboard import menu_keyboard_free, inline_markup_submit, inline_markup_reg, menu_keyboard
 from app.moduls import get_subscription_info, generate_response
 from app.update_keys import get_unused_key
+from data.bufer import B
 from data.config import bot
 from data.db_app import add_user, reg_user, get_flag, new_chat, get_user_history, update_user_history, \
     add_response_to_history, get_user, calculate_remaining_tokens, get_subscribe
+from nav.keyboard import menu_keyboard_free, inline_markup_submit, inline_markup_reg, menu_keyboard
+
 
 user = B()
 
 
-async def start_cmd(message: types.Message):
+async def start_cmd(message: types.Message, dialog_manager=None):
     user.user_id = message.from_user.id
     user_date = await get_user(user.user_id)
     if user_date is None:
@@ -139,7 +138,7 @@ async def echo(message: types.Message):
     # ==================================================================================================================
     elif text in ['📝 Токены']:
         await get_user(user.user_id)
-        if user.flag == 2 and user.subscribe is not None:
+        if user.subscribe is not None:
             response_text = (
                 f'Общее количество токенов по подписке "{user.subscribe}": {user.tokens}\n'
                 f'\nОставшееся количество токенов: {user.remaining_tokens}\n'
@@ -152,6 +151,11 @@ async def echo(message: types.Message):
                 f'\nОставшееся количество токенов: {user.remaining_tokens}'
             )
             await message.answer(response_text, reply_markup=menu_keyboard)
+            await message.answer("Бесплатные токены возвращаются каждый понедельник\n"
+                                 "Так же вы можете оформить подписку с оптимальным вариантом для вас!",
+                                 reply_markup=inline_markup_submit)
+        else:
+            await message.answer("Бесплатные токены закончились.\n", reply_markup=menu_keyboard_free)
             await message.answer("Бесплатные токены возвращаются каждый понедельник\n"
                                  "Так же вы можете оформить подписку с оптимальным вариантом для вас!",
                                  reply_markup=inline_markup_submit)

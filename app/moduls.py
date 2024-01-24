@@ -3,6 +3,9 @@ import time
 import traceback
 from datetime import datetime, timedelta
 import openai
+from aiogram_dialog import DialogManager
+from aiogram_dialog.widgets.kbd import ManagedCheckbox
+
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.db_app import calculate_remaining_tokens, update_tokens_used
 
@@ -76,11 +79,6 @@ async def generate_response(user_id, chat_history, message):
 
 
 async def handle_rate_limit_error(user_id, api_key, chat_history, message):
-    # dbkey_connection = sqlite3.connect('keys.db')
-    # dbkey_cursor = dbkey_connection.cursor()
-    # dbkey_cursor.execute('UPDATE info_key SET status_key=2 WHERE api_key=?', (api_key,))
-    # dbkey_connection.commit()
-    # dbkey_connection.close()
     await set_key_status_to_2(api_key)
     print("Пытаюсь отправить второй раз")
     api_key = await get_unused_key()
@@ -117,4 +115,3 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message):
         print(f"Ошибка RateLimit: {e}")
         await log_error(api_key, error_text)
         return handle_rate_limit_error(user_id, api_key, chat_history, message)
-

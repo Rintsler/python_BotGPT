@@ -11,6 +11,7 @@ class B:
     balance = None
     remaining_tokens = None
     flag = None
+    m_id = None
 
 
 user = B()
