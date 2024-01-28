@@ -66,13 +66,14 @@ async def schedule_thread():
 async def get_unused_key():
     try:
         async with aiosqlite.connect('Users.db') as db:
-            async with db.execute('SELECT * FROM info_key WHERE status_key=0 AND where_use="chat" LIMIT 1') as cursor:
+            async with db.execute(
+                    '''SELECT * FROM info_key WHERE status_key=0 AND where_use="chat" LIMIT 1''') as cursor:
                 unused_key_info = await cursor.fetchone()
 
                 if unused_key_info:
                     if unused_key_info[5] == 200:
                         await db.execute(
-                            'UPDATE info_key SET status_key=3, status_change=datetime("now") WHERE api_key=?',
+                            '''UPDATE info_key SET status_key=3, status_change=datetime("now") WHERE api_key=?''',
                             (unused_key_info[1],))
                         await db.commit()
                     else:

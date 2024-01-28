@@ -3,39 +3,24 @@ import time
 import traceback
 from datetime import datetime, timedelta
 import openai
-from aiogram_dialog import DialogManager
-from aiogram_dialog.widgets.kbd import ManagedCheckbox
-
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
-from data.db_app import calculate_remaining_tokens, update_tokens_used
+from data.db_app import calculate_remaining_tokens, update_tokens_used, get_user_data
 
 
-async def get_subscription_info(user_id, sub_date):
-    remaining_tokens = await calculate_remaining_tokens(user_id)
-    if sub_date:
-        remaining_days = await calculate_remaining_days(sub_date)
-        return {
-            "remaining_tokens": remaining_tokens,
-            "remaining_days": remaining_days
-        }
-    else:
-        return {
-            "remaining_tokens": 0,
-            "remaining_days": 0
-        }  # Если пользователь не найден, возвращаем 0
-
-
-async def calculate_remaining_days(registration_date):
+async def calculate_remaining_days(sub_date, flag):
     try:
-        # db_datetime = datetime.strptime(registration_date, "%Y-%m-%d %H:%M:%S")
-        db_datetime = datetime.strptime(registration_date, "%Y-%m-%d %H:%M")
+        db_datetime = datetime.strptime(sub_date, "%Y-%m-%d %H:%M:%S")
         current_date = datetime.now()
-
         # Рассчитываем разницу в днях
-        remaining_days = (db_datetime + timedelta(days=30)) - current_date
-
-        return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
-
+        if flag == 3:
+            remaining_days = (db_datetime + timedelta(days=30)) - current_date
+            return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
+        if flag == 4:
+            remaining_days = (db_datetime + timedelta(days=180)) - current_date
+            return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
+        if flag == 5:
+            remaining_days = (db_datetime + timedelta(days=365)) - current_date
+            return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
     except ValueError as e:
         print(f"Ошибка при преобразовании даты: {e}")
         return None
@@ -53,7 +38,7 @@ async def generate_response(user_id, chat_history, message):
         system_message = {"role": "system", "content": "You are a helpful assistant"}
         messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo-16k",
             api_key=api_key,
             messages=messages,
             temperature=0.8,
@@ -104,10 +89,8 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message):
         otvet = response['choices'][0]['message']['content'].strip()
         print("Пытаюсь отправить второй раз")
         tokens_used = len(otvet)
-        print(tokens_used)
         # Обновляем столбец tokens_used в базе данных
         await update_tokens_used(tokens_used, user_id)
-        print("записвыаю")
         await reset_key_status(api_key)
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
@@ -115,3 +98,36 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message):
         print(f"Ошибка RateLimit: {e}")
         await log_error(api_key, error_text)
         return handle_rate_limit_error(user_id, api_key, chat_history, message)
+
+
+async def profile(user_id, ):
+    subscribe = ''
+    pk, user_id, flag, username, registration_date, chat_history, response_history, tokens, tokens_used, \
+        sub_date, remaining_days, remaining_tokens = await get_user_data(user_id)
+    user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, tokens,
+                 tokens_used, sub_date, remaining_days, remaining_tokens]
+    if sub_date:
+        remaining_days = await calculate_remaining_days(sub_date, flag)
+
+    for i in user_info:
+        if i is None:
+            i = ''
+    if flag == 3:
+        subscribe = "1 месяц"
+        remaining_tokens = "действует подписка"
+    elif flag == 4:
+        subscribe = "6 месяцев"
+        remaining_tokens = "действует подписка"
+    elif flag == 5:
+        subscribe = "1 год"
+        remaining_tokens = "действует подписка"
+
+    profile_text = (
+        f"\t📊 Ваш профиль:\n"
+        f"👤 Ваш ID: {user_id}\n"
+        f"✅ Подписка: {subscribe}\n"
+        f"📕 Остаток токенов: {remaining_tokens}\n"
+        f"⏳ Дата регистрации: {registration_date}\n"
+        f"🗓 Осталось дней подписки: {remaining_days}\n"
+    )
+    return profile_text

@@ -1,59 +1,89 @@
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
-import operator
 
-from aiogram_dialog.widgets.kbd import Multiselect
-from aiogram_dialog.widgets.text import Format
 
-menu_keyboard_free = ReplyKeyboardMarkup(
+# ======================================================================================================================
+# InLine Buttons основное меню
+# ======================================================================================================================
+menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="📝 Тарифы"),
-            KeyboardButton(text="⚙️ HELP"),
+            KeyboardButton(text="📊 Профиль")
         ],
         [
-            # KeyboardButton(text="📝 Остаток запросов"),
+            KeyboardButton(text="🧠 Нейросеть"),
             KeyboardButton(text="👥 Создать чат")
         ]
     ],
     resize_keyboard=True
 )
 
-menu_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="💰 Подписка"),
-            KeyboardButton(text="⚙️ HELP"),
-            KeyboardButton(text="📊 Профиль")
-        ],
-        [
-            KeyboardButton(text="📝 Токены"),
-            KeyboardButton(text="👥 Создать чат"),
-        ]
-    ],
-    resize_keyboard=True
-)
 # ======================================================================================================================
-# InLine Buttons подписки
+# InLine Buttons меню профиля
 # ======================================================================================================================
-inline_markup_submit = InlineKeyboardMarkup(
+menu_profile = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Оформить подписку", callback_data='submit'),
-            # InlineKeyboardButton(text="Комфорт", callback_data="komf"),
-            # InlineKeyboardButton(text="Профи", callback_data="pro")
+            InlineKeyboardButton(text="💰 Подписка", callback_data='submit')
+        ],
+        [
+            InlineKeyboardButton(text="🛠 Техподдержка", callback_data='tp')
         ]
     ],
     resize_keyboard=True
 )
 
 # ======================================================================================================================
-# InLine Button регистрация
+# InLine Buttons меню профиля
+# ======================================================================================================================
+menu_ai = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Генерация изображения Dally 2", callback_data='dally_2')
+        ],
+        [
+            InlineKeyboardButton(text="Генерация изображения Dally 3", callback_data='dally_3')
+        ],
+        [
+            InlineKeyboardButton(text="Текстовый диалог с Ботом", callback_data='bot_dialog')
+        ]
+    ],
+    resize_keyboard=True
+)
+
+# ======================================================================================================================
+# InLine Buttons в меню Подписка
+# ======================================================================================================================
+inline_submit_preview = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Оформить подписку", callback_data='submit_up')
+        ],
+        [
+            InlineKeyboardButton(text="← назад", callback_data='back_to_profile')
+        ]
+    ],
+    resize_keyboard=True
+)
+
+# ======================================================================================================================
+# InLine Buttons в меню Техподдержка
+# ======================================================================================================================
+inline_tp = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="← назад", callback_data='back_to_profile')
+        ]
+    ],
+    resize_keyboard=True
+)
+
+# ======================================================================================================================
+# InLine Button подписка на канал
 # ======================================================================================================================
 inline_markup_reg = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text='👤 Регистрация', callback_data="reg")
+            InlineKeyboardButton(text='👤 Подписаться', callback_data="reg")
         ]
     ],
     resize_keyboard=True
@@ -62,48 +92,14 @@ inline_markup_reg = InlineKeyboardMarkup(
 # ======================================================================================================================
 # ЧЕК-БОКСЫ
 # ======================================================================================================================
-
-inline_gen_text = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Генерация текста", callback_data="gen_text")
-        ]
-    ],
-    resize_keyboard=True
-)
-
-inline_gen_post = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Генерация постов", callback_data="gen_post")
-        ]
-    ],
-    resize_keyboard=True
-)
-
-inline_gen_img = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Генерация изображения", callback_data="gen_img")
-        ]
-    ],
-    resize_keyboard=True
-)
-
-inline_itog = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Расчитать стоимость", callback_data="itog")
-        ]
-    ],
-    resize_keyboard=True
-)
-
 inline_pay = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(text="Оплатить", callback_data="pay")
+        ],
+        [
+            InlineKeyboardButton(text="← назад", callback_data='back')
         ]
     ],
-    resize_keyboard=True
+    resize_keyboard=False
 )

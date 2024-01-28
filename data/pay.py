@@ -1,50 +1,134 @@
 from aiogram import types
-from aiogram.types import LabeledPrice
-
+from aiogram.types import LabeledPrice, InlineKeyboardMarkup, InlineKeyboardButton
 from data.config import bot, YOOTOKEN
-from nav.keyboard import inline_gen_text, inline_gen_post, inline_gen_img, inline_itog, inline_pay
+from nav.keyboard import inline_pay
 
 CHECK = [0, 0, 0]
+TEXT = ["", "", ""]
 
 
 # ======================================================================================================================
 #                                            ВЫБОР ПОДПИСКИ "СТАРТ"
 # ======================================================================================================================
 async def order_submit(call: types.CallbackQuery):
+    if CHECK[0] != 0:
+        TEXT[0] = "✓  Генерация текста"
+    else:
+        TEXT[0] = "Генерация текста"
+    if CHECK[1] != 0:
+        TEXT[1] = "✓  Генерация постов"
+    else:
+        TEXT[1] = "Генерация постов"
+    if CHECK[2] != 0:
+        TEXT[2] = "✓  Генерация изображений"
+    else:
+        TEXT[2] = "Генерация изображений"
+    await call.message.answer('Какие функции включить в вашу подписку?\n'
+                              'Для итоговой суммы за подписку нажмите кнопку.\n',
+                              reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=TEXT[0], callback_data='gen_text')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[1], callback_data="gen_post")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[2], callback_data="gen_img")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="Расчитать стоимость", callback_data="itog")
+                                        ]
+                                    ],
+                                    resize_keyboard=False
+                                ))
     await bot.delete_message(call.from_user.id, call.message.message_id)
-    await call.message.answer('Какие функции включить в вашу подписку?\n')
-    await call.message.answer('Генерация текста\n', reply_markup=inline_gen_text)
-    await call.message.answer('Генерация постов\n', reply_markup=inline_gen_post)
-    await call.message.answer('Генерация изображений\n', reply_markup=inline_gen_img)
-    await call.message.answer('Для итоговой суммы за подписку нажмите кнопку.\n', reply_markup=inline_itog)
 
 
-async def order_gen_text(call: types.CallbackQuery):
+async def order_gen(call: types.CallbackQuery):
     if call.message:
         if call.data == "gen_text":
-            text = call.message.text + "\n✓  Генерация текста\n"
-            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text)
+            if CHECK[0] == 0:
+                TEXT[0] = "✓  Генерация текста"
+                CHECK[0] = 500
+            else:
+                TEXT[0] = "Генерация текста"
+                CHECK[0] = 0
+            await call.message.answer(
+                'Какие функции включить в вашу подписку?\n', reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=TEXT[0], callback_data='gen_text')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[1], callback_data="gen_post")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[2], callback_data="gen_img")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="Расчитать стоимость", callback_data="itog")
+                                        ]
+                                    ],
+                                    resize_keyboard=False
+                                ))
 
-            CHECK[0] = 500
-
-
-async def order_gen_img(call: types.CallbackQuery):
-    if call.message:
-        if call.data == "gen_img":
-            text = call.message.text + "\n✓  Генерация изображений\n"
-            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text)
-            CHECK[1] = 1000
-
-
-async def order_gen_post(call: types.CallbackQuery):
-    if call.message:
         if call.data == "gen_post":
-            text = call.message.text + "\n✓  Генерация постов\n"
-            await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text)
-            CHECK[2] = 2000
+            if CHECK[1] == 0:
+                TEXT[1] = "✓  Генерация постов"
+                CHECK[1] = 1000
+            else:
+                TEXT[1] = "Генерация постов"
+                CHECK[1] = 0
+            await call.message.answer(
+                'Какие функции включить в вашу подписку?\n', reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=TEXT[0], callback_data='gen_text')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[1], callback_data="gen_post")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[2], callback_data="gen_img")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="Расчитать стоимость", callback_data="itog")
+                                        ]
+                                    ],
+                                    resize_keyboard=False
+                                ))
+
+        if call.data == "gen_img":
+            if CHECK[2] == 0:
+                TEXT[2] = "✓  Генерация изображений"
+                CHECK[2] = 2000
+            else:
+                TEXT[2] = "Генерация изображений"
+                CHECK[2] = 0
+            await call.message.answer(
+                'Какие функции включить в вашу подписку?\n', reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=TEXT[0], callback_data='gen_text')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[1], callback_data="gen_post")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=TEXT[2], callback_data="gen_img")
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="Расчитать стоимость", callback_data="itog")
+                                        ]
+                                    ],
+                                    resize_keyboard=False
+                                ))
+    await bot.delete_message(call.from_user.id, call.message.message_id)
 
 
 async def order_itog(call: types.CallbackQuery):
+    await bot.delete_message(call.from_user.id, call.message.message_id)
     await call.message.answer(f'Сумма к оплате составила:\n{sum(CHECK)}', reply_markup=inline_pay)
 
 

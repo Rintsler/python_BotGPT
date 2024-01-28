@@ -1,64 +1,151 @@
 import json
+import random
 import openai
 from aiogram import types
-from app.moduls import get_subscription_info, generate_response
+from app.moduls import generate_response, profile
 from app.update_keys import get_unused_key
-from data.bufer import B
 from data.config import bot
 from data.db_app import add_user, reg_user, get_flag, new_chat, get_user_history, update_user_history, \
-    add_response_to_history, get_user, calculate_remaining_tokens, get_subscribe
-from nav.keyboard import menu_keyboard_free, inline_markup_submit, inline_markup_reg, menu_keyboard
+    add_response_to_history, calculate_remaining_tokens
+from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai
+
+STATE = ''
+
+options = [
+    "🤔 Осторожно, работает умная машина...",
+    "⏳ Подождите, я тут кручусь и думаю...",
+    "🌟 Работаю над вашим запросом, скоро все будет!",
+    "🧠 Мозговой штурм в процессе, немного терпения!"
+]
 
 
-user = B()
+async def start_cmd(message: types.Message):
+    username = message.from_user.username
+    await message.answer(f'Привет, {username}!\nДля пользования ботом, подпишитесь на наш новостной канал и вы получите'
+                         f'10000 бесплатных токенов для текстовых ответов.', reply_markup=inline_markup_reg)
 
 
-async def start_cmd(message: types.Message, dialog_manager=None):
-    user.user_id = message.from_user.id
-    user_date = await get_user(user.user_id)
-    if user_date is None:
-        user.username = message.from_user.username
-    text = f"Привет, {user.username}!\nЯ ваш телеграм-бот. " \
-           f"Отправьте мне ваш вопрос, и я постараюсь ответить."
-    if user.flag == 0 or user.flag is None:
-        user.tokens = 10000
-        user.flag = 1
-        await add_user(user.user_id, user.username, user.tokens, user.flag)
-        await message.answer(text, reply_markup=menu_keyboard_free)
-        await message.answer(
-            "Вам доступно 10000 бесплатных токенов, которые обновляются каждый понедельник.\n"
-            "Для расширения функционала вам надо зарегистрироваться.",
-            reply_markup=inline_markup_reg)
-    elif user.flag == 1:
-        if user.tokens == 0 or user.tokens is None:
-            await message.answer(text, reply_markup=menu_keyboard_free)
-            await message.answer(
-                f"ВНИМАНИЕ: Бесплатные токены закончились.",
-                reply_markup=inline_markup_reg)
-        else:
-            remaining_tokens = await calculate_remaining_tokens(message.from_user.id)
-            await message.answer(text, reply_markup=menu_keyboard_free)
-            await message.answer(f"Бесплатных токенов осталось {remaining_tokens}.",
-                                 reply_markup=inline_markup_reg)
-    elif user.flag == 2:
-        await message.answer(text, reply_markup=menu_keyboard)
-        await message.answer(
-            'ВНИМАНИЕ: Бесплатные токены закончились. Оформите подписку для дальнейшего использования бота.',
-            reply_markup=inline_markup_submit)
+async def in_to_db(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    flag = await get_flag(user_id)
+    await calculate_remaining_tokens(user_id)
+    if flag == 0 or flag is None:
+        flag = 1
+        tokens = 10000
+        username = call.from_user.username
+        await calculate_remaining_tokens(user_id)
+        await add_user(user_id, username, tokens, flag)
+    await call.message.answer('Типа подписался...', reply_markup=menu_keyboard)
+    # elif flag == 3:
+    #     await call.answer(f'У вас действует месячная подписка. Отправьте мне ваш вопрос, '
+    #                          f'и я постараюсь ответить.', reply_markup=menu_keyboard)
+    # elif flag == 4:
+    #     await call.answer(f'У вас действует подписка на 6 месяцев. '
+    #                          f'Отправьте мне ваш вопрос, и я постараюсь ответить.',
+    #                          reply_markup=menu_keyboard)
+    # elif flag == 5:
+    #     await message.answer(f'У вас действует годовая подписка. Отправьте мне ваш вопрос, и я постараюсь ответить.',
+    #                          reply_markup=menu_keyboard)
+    # elif remaining_tokens is not None and remaining_tokens != 0:
+    #     if flag == 2:
+    #         await message.answer(f'Бесплатных токенов осталось {remaining_tokens}. Оформите подписку и '
+    #                              f'получите больше функционала на выгодных для Вас условиях.',
+    #                              reply_markup=inline_submit_preview)
+    #     else:
+    #         await message.answer(f'Бесплатных токенов осталось {remaining_tokens}. Зарегистрируйтесь и '
+    #                              f'оформите подписку и получите больше функционала на выгодных для Вас условиях.',
+    #                              reply_markup=inline_markup_reg)
+    # else:
+    #     if flag > 1:
+    #         await call.answer(
+    #             'ВНИМАНИЕ: Бесплатные токены закончились. Оформите подписку и '
+    #             'получите больше функционала на выгодных для Вас условиях.',
+    #             reply_markup=inline_submit_preview)
+    #     else:
+    #         await call.answer(
+    #             'ВНИМАНИЕ: Бесплатные токены закончились.  и оформите подписку и '
+    #             'получите больше функционала на выгодных для Вас условиях.',
+    #             reply_markup=inline_markup_reg)
 
 
 # ======================================================================================================================
 #                                            РЕГИСТРАЦИЯ
 # ======================================================================================================================
 async def registration(call: types.CallbackQuery):
-    if user.flag == 2:
-        await call.message.answer("Вы уже зарегистрированы.", reply_markup=menu_keyboard)
+    user_id = call.from_user.id
+    flag = await get_flag(user_id)
+    if flag > 1:
+        await call.message.answer('Вы уже зарегистрированы.\nИнформация доступна по кнопке "📊 Профиль"',
+                                  reply_markup=menu_keyboard)
     else:
-        user.registration_date = call.message.date.strftime('%Y-%m-%d %H:%M:%S')
-        user.flag = 2
-        await reg_user(user.registration_date, user.flag, user.user_id)
+        registration_date = call.message.date.strftime('%Y-%m-%d %H:%M:%S')
+        flag = 2
+        await reg_user(registration_date, flag, user_id)
         await call.message.answer("Регистрация успешна!", reply_markup=menu_keyboard)
-        await call.message.answer("Можете оформить подписку.", reply_markup=inline_markup_submit)
+        await call.message.answer("Можете оформить подписку для расширения функционала.",
+                                  reply_markup=inline_submit_preview)
+
+
+async def submit(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    flag = await get_flag(user_id)
+    if flag == 3:
+        await bot.edit_message_text(
+            'У вас действует месячная подписка. Отправьте мне ваш вопрос, и я постараюсь ответить.',
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=inline_submit_preview
+        )
+        await call.answer(f'У вас действует месячная подписка. Отправьте мне ваш вопрос, '
+                          f'и я постараюсь ответить.', reply_markup=menu_keyboard)
+    elif flag == 4:
+        await call.answer(f'У вас действует подписка на 6 месяцев. '
+                          f'Отправьте мне ваш вопрос, и я постараюсь ответить.',
+                          reply_markup=menu_keyboard)
+    elif flag == 5:
+        await call.answer(
+            f'У вас действует годовая подписка. Отправьте мне ваш вопрос, и я постараюсь ответить.',
+            reply_markup=menu_keyboard)
+    else:
+        await bot.edit_message_text("Выберите тип подписки:",
+                                    chat_id=call.message.chat.id,
+                                    message_id=call.message.message_id,
+                                    reply_markup=inline_submit_preview)
+
+
+async def tp(call: types.CallbackQuery):
+    await bot.edit_message_text(
+        'Этот раздел еще в разработке...',
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        reply_markup=inline_tp
+    )
+
+
+async def back_to_profile(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    profile_text = await profile(user_id)
+    await bot.edit_message_text(profile_text,
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=menu_profile
+                                )
+
+
+async def dally_2(call: types.CallbackQuery):
+    global STATE
+    STATE = 'dally2'
+    await call.message.answer('Ок! Дальше я на ваши сообщения буду отвечать изображениями 👩‍🎨')
+
+
+async def dally_3(call: types.CallbackQuery):
+    await call.message.answer('Данный раздел находится в разработке, но скоро будет доступен...')
+
+
+async def bot_dialog(call: types.CallbackQuery):
+    global STATE
+    STATE = ''
+    await call.message.answer('Понял! Возвращаемся к обычному общению ')
 
 
 async def send_image(message):
@@ -76,137 +163,77 @@ async def send_image(message):
 #                                             Любой запрос
 # ======================================================================================================================
 async def echo(message: types.Message):
-    user.user_id = message.from_user.id
+    user_id = message.from_user.id
     text = message.text
-    user.flag = await get_flag(user.user_id)
-    user.subscribe = await get_subscribe(user.user_id)
-
-    # ==================================================================================================================
-    #                                             ПОДПИСКА
-    # ==================================================================================================================
-    if text in ['💰 Подписка']:
-        # Проверяем есть ли пользователь в базе
-        if user.subscribe is not None:
-            await message.answer(
-                f'У вас действует подписка "{user.subscribe}". Для информации используйте меню 📝 Токены')
-        else:
-            await message.answer("Выберите тип подписки:", reply_markup=inline_markup_submit)
-    # ==================================================================================================================
-    #                                             ПОДПИСКА
-    # ==================================================================================================================
-    elif text in ['⚙️ HELP']:
-        if user.flag == 2:
-            await message.answer(f"Раздел HELP {user.flag}", reply_markup=menu_keyboard)
-        else:
-            await message.answer(f"Раздел HELP {user.flag}", reply_markup=menu_keyboard_free)
-    # ==================================================================================================================
-    #                                             Информация по подписке
-    # ==================================================================================================================
-    elif text in ['📝 Тарифы']:
-        await message.answer("Подписки:\nСтарт: 120р - 80тыс токенов"
-                             "\nКомфорт: 250р - 150тыс токенов"
-                             "\nПрофи: 500-600р - 300тыс токенов", reply_markup=inline_markup_reg)
+    flag = await get_flag(user_id)
+    r_tokens = await calculate_remaining_tokens(user_id)
+    print(r_tokens)
     # ==================================================================================================================
     #                                             Профиль
     # ==================================================================================================================
-    elif text in ['📊 Профиль']:
-        await get_user(user.user_id)
-        subscription_info = await get_subscription_info(user.user_id, user.sub_date)
-        if user.registration_date is None:
-            user.registration_date = ' '
-        if user.balance is None:
-            user.balance = ' '
-        if user.subscribe is None:
-            user.subscribe = ' '
-
-        profile_text = (
-            f"\t📊 Ваш профиль:\n"
-            f"👤 Ваш айди: {user.user_id}\n"
-            f"💰 Баланс: {user.balance} ₽\n"
-            f"✅ Подписка: {user.subscribe}\n"
-            f"📕 Остаток токенов по подписке: {subscription_info['remaining_tokens']}\n"
-            f"⏳ Дата регистрации: {user.registration_date}\n"
-            f"🗓 Осталось дней подписки: {subscription_info['remaining_days']}\n"
-        )
-        if user.remaining_tokens > 0:
-            text_options = f"📕 Остаток бесплатных токенов: {user.remaining_tokens}\n"
-            await message.answer(profile_text + text_options, reply_markup=menu_keyboard)
-        else:
-            await message.answer(profile_text, reply_markup=menu_keyboard)
+    if text in ['📊 Профиль']:
+        profile_text = await profile(user_id)
+        await message.answer(profile_text, reply_markup=menu_profile)
     # ==================================================================================================================
-    #                                             Токены
+    #                                             Нейросеть
     # ==================================================================================================================
-    elif text in ['📝 Токены']:
-        await get_user(user.user_id)
-        if user.subscribe is not None:
-            response_text = (
-                f'Общее количество токенов по подписке "{user.subscribe}": {user.tokens}\n'
-                f'\nОставшееся количество токенов: {user.remaining_tokens}\n'
-            )
-            await message.answer(response_text + "Для перехода на другую подписку, выберите вариант ниже:",
-                                 reply_markup=inline_markup_submit)
-        elif user.flag == 1 and user.tokens != 0:
-            response_text = (
-                f'Общее количество бесплатных токенов: 10000\n'
-                f'\nОставшееся количество токенов: {user.remaining_tokens}'
-            )
-            await message.answer(response_text, reply_markup=menu_keyboard)
-            await message.answer("Бесплатные токены возвращаются каждый понедельник\n"
-                                 "Так же вы можете оформить подписку с оптимальным вариантом для вас!",
-                                 reply_markup=inline_markup_submit)
-        else:
-            await message.answer("Бесплатные токены закончились.\n", reply_markup=menu_keyboard_free)
-            await message.answer("Бесплатные токены возвращаются каждый понедельник\n"
-                                 "Так же вы можете оформить подписку с оптимальным вариантом для вас!",
-                                 reply_markup=inline_markup_submit)
+    elif text in ['🧠 Нейросеть']:
+        await message.answer('Теперь можете переключить нейросеть для ваших дальнейших запросов к боту',
+                             reply_markup=menu_ai)
     # ==================================================================================================================
     #                                             Создать чат
     # ==================================================================================================================
     elif text in ['👥 Создать чат']:
-        await new_chat(user.user_id)
-        if user.flag == 2:
+        await new_chat(user_id)
+        if flag > 1:
             await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.", reply_markup=menu_keyboard)
         else:
-            await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.",
-                                 reply_markup=menu_keyboard_free)
+            await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.")
     # ==================================================================================================================
     #                                             Любой запрос к боту
     # ==================================================================================================================
     else:
-        user_question = message.text
-        print(f"User question: {user_question}")
-        # Отправляем анимацию перед запросом к OpenAI GPT
-        processing_message = await message.answer("🔄 Обработка запроса...")
+        if flag > 0 and r_tokens > 0:
+            user_question = message.text
+            print(f"User question: {user_question}")
+            if STATE == 'dally2':
+                await send_image(message)
+                return
+            # Отправляем анимацию перед запросом к OpenAI GPT
+            processing_message = await message.answer(random.choice(options))
 
-        # Получаем текущую историю пользователя
-        chat_history, response_history = await get_user_history(user.user_id)
+            # Получаем текущую историю пользователя
+            chat_history, response_history = await get_user_history(user_id)
 
-        chat_history = json.loads(chat_history) if chat_history else []
-        response_history = json.loads(response_history) if response_history else []
+            chat_history = json.loads(chat_history) if chat_history else []
+            response_history = json.loads(response_history) if response_history else []
 
-        # Добавляем новое сообщение к истории
-        chat_history.append({"role": "user", "content": user_question})
+            # Добавляем новое сообщение к истории
+            chat_history.append({"role": "user", "content": user_question})
 
-        # Обновляем историю в базе данных
-        await update_user_history(user.user_id, chat_history, response_history)
+            # Обновляем историю в базе данных
+            await update_user_history(user_id, chat_history, response_history)
 
-        # Имитация анимации перед запросом к OpenAI GPT завершена
+            # Имитация анимации перед запросом к OpenAI GPT завершена
 
-        response = await generate_response(user.user_id, chat_history, message)
-        print(f"OpenAI response: {response}")
+            response = await generate_response(user_id, chat_history, message)
+            print(f"OpenAI response: {response}")
 
-        # Удаляем сообщение с анимацией перед отправкой ответа
-        await bot.delete_message(chat_id=processing_message.chat.id, message_id=processing_message.message_id)
+            # Удаляем сообщение с анимацией перед отправкой ответа
+            await bot.delete_message(chat_id=processing_message.chat.id, message_id=processing_message.message_id)
 
-        # Имитация анимации после получения ответа от OpenAI GPT
-        await message.answer("✅ Готово!")
+            # Добавляем ответ к истории ответов
+            response_history.append({"role": "assistant", "content": response})
 
-        # Добавляем ответ к истории ответов
-        response_history.append({"role": "assistant", "content": response})
+            await add_response_to_history(user_id, response_history)
 
-        await add_response_to_history(user.user_id, response_history)
-
-        if user.flag == 2:
             await message.answer(response, reply_markup=menu_keyboard)
+
+            await calculate_remaining_tokens(user_id)
+        elif flag > 1:
+            await message.answer("Ваши бесплатные токены на нуле, "
+                                 "ждите понедельника или оформите подписку.", reply_markup=inline_submit_preview)
         else:
-            await message.answer(response, reply_markup=menu_keyboard_free)
+            await message.answer("Ваши бесплатные токены на нуле, "
+                                 "ждите понедельника или зарегистрируйтесь и оформите подписку.",
+                                 reply_markup=inline_markup_reg)
