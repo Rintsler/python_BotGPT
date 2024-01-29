@@ -149,7 +149,8 @@ async def bot_dialog(call: types.CallbackQuery):
 
 
 async def send_image(message):
-    api_key = get_unused_key()
+    api_key = await get_unused_key()
+    print(api_key)
     response = openai.Image.create(
         api_key=api_key,
         prompt=message.text,
