@@ -4,12 +4,10 @@ import openai
 from aiogram import types
 from app.moduls import generate_response, profile
 from app.update_keys import get_unused_key
-from data.config import bot
-from data.db_app import add_user, reg_user, get_flag, new_chat, get_user_history, update_user_history, \
-    add_response_to_history, calculate_remaining_tokens
+from data.config import bot, chat_id
+from data.db_app import add_user, get_flag, new_chat, get_user_history, update_user_history, \
+    add_response_to_history, calculate_remaining_tokens, set_state_ai, get_state_ai
 from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai
-
-STATE = ''
 
 options = [
     "🤔 Осторожно, работает умная машина...",
@@ -20,70 +18,10 @@ options = [
 
 
 async def start_cmd(message: types.Message):
-    username = message.from_user.username
-    await message.answer(f'Привет, {username}!\nДля пользования ботом, подпишитесь на наш новостной канал и вы получите'
-                         f'10000 бесплатных токенов для текстовых ответов.', reply_markup=inline_markup_reg)
-
-
-async def in_to_db(call: types.CallbackQuery):
-    user_id = call.from_user.id
-    flag = await get_flag(user_id)
-    await calculate_remaining_tokens(user_id)
-    if flag == 0 or flag is None:
-        flag = 1
-        tokens = 10000
-        username = call.from_user.username
-        await calculate_remaining_tokens(user_id)
-        await add_user(user_id, username, tokens, flag)
-    await call.message.answer('Типа подписался...', reply_markup=menu_keyboard)
-    # elif flag == 3:
-    #     await call.answer(f'У вас действует месячная подписка. Отправьте мне ваш вопрос, '
-    #                          f'и я постараюсь ответить.', reply_markup=menu_keyboard)
-    # elif flag == 4:
-    #     await call.answer(f'У вас действует подписка на 6 месяцев. '
-    #                          f'Отправьте мне ваш вопрос, и я постараюсь ответить.',
-    #                          reply_markup=menu_keyboard)
-    # elif flag == 5:
-    #     await message.answer(f'У вас действует годовая подписка. Отправьте мне ваш вопрос, и я постараюсь ответить.',
-    #                          reply_markup=menu_keyboard)
-    # elif remaining_tokens is not None and remaining_tokens != 0:
-    #     if flag == 2:
-    #         await message.answer(f'Бесплатных токенов осталось {remaining_tokens}. Оформите подписку и '
-    #                              f'получите больше функционала на выгодных для Вас условиях.',
-    #                              reply_markup=inline_submit_preview)
-    #     else:
-    #         await message.answer(f'Бесплатных токенов осталось {remaining_tokens}. Зарегистрируйтесь и '
-    #                              f'оформите подписку и получите больше функционала на выгодных для Вас условиях.',
-    #                              reply_markup=inline_markup_reg)
-    # else:
-    #     if flag > 1:
-    #         await call.answer(
-    #             'ВНИМАНИЕ: Бесплатные токены закончились. Оформите подписку и '
-    #             'получите больше функционала на выгодных для Вас условиях.',
-    #             reply_markup=inline_submit_preview)
-    #     else:
-    #         await call.answer(
-    #             'ВНИМАНИЕ: Бесплатные токены закончились.  и оформите подписку и '
-    #             'получите больше функционала на выгодных для Вас условиях.',
-    #             reply_markup=inline_markup_reg)
-
-
-# ======================================================================================================================
-#                                            РЕГИСТРАЦИЯ
-# ======================================================================================================================
-async def registration(call: types.CallbackQuery):
-    user_id = call.from_user.id
-    flag = await get_flag(user_id)
-    if flag > 1:
-        await call.message.answer('Вы уже зарегистрированы.\nИнформация доступна по кнопке "📊 Профиль"',
-                                  reply_markup=menu_keyboard)
-    else:
-        registration_date = call.message.date.strftime('%Y-%m-%d %H:%M:%S')
-        flag = 2
-        await reg_user(registration_date, flag, user_id)
-        await call.message.answer("Регистрация успешна!", reply_markup=menu_keyboard)
-        await call.message.answer("Можете оформить подписку для расширения функционала.",
-                                  reply_markup=inline_submit_preview)
+    user_name = message.from_user.first_name
+    await message.answer(
+        f'Привет, {user_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите "Готово". '
+        f'Вы получите 10000 бесплатных токенов для текстовых ответов.', reply_markup=inline_markup_reg)
 
 
 async def submit(call: types.CallbackQuery):
@@ -132,20 +70,46 @@ async def back_to_profile(call: types.CallbackQuery):
                                 )
 
 
-async def dally_2(call: types.CallbackQuery):
-    global STATE
-    STATE = 'dally2'
+async def check_sub(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+    print(member)
+    if member.status != 'left':
+        r_t = await calculate_remaining_tokens(user_id)
+        flag = await get_flag(user_id)
+        if flag == 0 or flag is None:
+            username = call.from_user.username
+            flag = 1
+            tokens = 10000
+            registration_date = call.message.date.strftime('%Y-%m-%d %H:%M:%S')
+            await add_user(user_id, username, registration_date, tokens, flag)
+            await call.message.answer(
+                f'Спасибо за подписку на наш канал! У вас 10000 бесплатных токенов для запросов.',
+                reply_markup=menu_keyboard)
+        else:
+            await call.message.answer(
+                f'Спасибо за подписку на наш канал! У вас {r_t} бесплатных токенов для запросов.',
+                reply_markup=menu_keyboard)
+    else:
+        await call.answer('Для начала подпишись на наш канал')
+
+
+async def dalle_2(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    state_ai = 'dally2'
+    await set_state_ai(user_id, state_ai)
     await call.message.answer('Ок! Дальше я на ваши сообщения буду отвечать изображениями 👩‍🎨')
 
 
-async def dally_3(call: types.CallbackQuery):
+async def dalle_3(call: types.CallbackQuery):
     await call.message.answer('Данный раздел находится в разработке, но скоро будет доступен...')
 
 
 async def bot_dialog(call: types.CallbackQuery):
-    global STATE
-    STATE = ''
-    await call.message.answer('Понял! Возвращаемся к обычному общению ')
+    user_id = call.from_user.id
+    state_ai = ''
+    await set_state_ai(user_id, state_ai)
+    await call.message.answer('Понял! Возвращаемся к обычному общению.')
 
 
 async def send_image(message):
@@ -169,72 +133,80 @@ async def echo(message: types.Message):
     flag = await get_flag(user_id)
     r_tokens = await calculate_remaining_tokens(user_id)
     print(r_tokens)
-    # ==================================================================================================================
-    #                                             Профиль
-    # ==================================================================================================================
-    if text in ['📊 Профиль']:
-        profile_text = await profile(user_id)
-        await message.answer(profile_text, reply_markup=menu_profile)
-    # ==================================================================================================================
-    #                                             Нейросеть
-    # ==================================================================================================================
-    elif text in ['🧠 Нейросеть']:
-        await message.answer('Теперь можете переключить нейросеть для ваших дальнейших запросов к боту',
-                             reply_markup=menu_ai)
-    # ==================================================================================================================
-    #                                             Создать чат
-    # ==================================================================================================================
-    elif text in ['👥 Создать чат']:
-        await new_chat(user_id)
-        if flag > 1:
+    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+    print(member)
+    if member.status != 'left':
+        # ==================================================================================================================
+        #                                             Профиль
+        # ==================================================================================================================
+        if text in ['📊 Профиль']:
+            profile_text = await profile(user_id)
+            await message.answer(profile_text, reply_markup=menu_profile)
+        # ==================================================================================================================
+        #                                             Нейросеть
+        # ==================================================================================================================
+        elif text in ['🧠 Нейросеть']:
+            await message.answer('Теперь можете переключить нейросеть для ваших дальнейших запросов к боту',
+                                 reply_markup=menu_ai)
+        # ==================================================================================================================
+        #                                             Создать чат
+        # ==================================================================================================================
+        elif text in ['👥 Создать чат']:
+            await new_chat(user_id)
             await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.", reply_markup=menu_keyboard)
+        # ==================================================================================================================
+        #                                             Любой запрос к боту
+        # ==================================================================================================================
         else:
-            await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.")
-    # ==================================================================================================================
-    #                                             Любой запрос к боту
-    # ==================================================================================================================
+            if flag > 0 and r_tokens > 0:
+                user_question = message.text
+                print(f"User question: {user_question}")
+                state_ai = await get_state_ai(user_id)
+                if state_ai == 'dalle2':
+                    # Отправляем анимацию перед запросом к OpenAI GPT
+                    processing_message = await message.answer(random.choice(options))
+                    await send_image(message)
+                    # Удаляем сообщение с анимацией перед отправкой ответа
+                    await bot.delete_message(chat_id=processing_message.chat.id, message_id=processing_message.message_id)
+                    return
+                # Отправляем анимацию перед запросом к OpenAI GPT
+                processing_message = await message.answer(random.choice(options))
+
+                # Получаем текущую историю пользователя
+                chat_history, response_history = await get_user_history(user_id)
+
+                chat_history = json.loads(chat_history) if chat_history else []
+                response_history = json.loads(response_history) if response_history else []
+
+                # Добавляем новое сообщение к истории
+                chat_history.append({"role": "user", "content": user_question})
+
+                # Обновляем историю в базе данных
+                await update_user_history(user_id, chat_history, response_history)
+
+                # Имитация анимации перед запросом к OpenAI GPT завершена
+
+                response = await generate_response(user_id, chat_history, message)
+                print(f"OpenAI response: {response}")
+
+                # Удаляем сообщение с анимацией перед отправкой ответа
+                await bot.delete_message(chat_id=processing_message.chat.id, message_id=processing_message.message_id)
+
+                # Добавляем ответ к истории ответов
+                response_history.append({"role": "assistant", "content": response})
+
+                await add_response_to_history(user_id, response_history)
+
+                await message.answer(response, reply_markup=menu_keyboard)
+
+                await calculate_remaining_tokens(user_id)
+            elif flag > 1:
+                await message.answer("Ваши бесплатные токены на нуле, "
+                                     "ждите понедельника или оформите подписку.", reply_markup=inline_submit_preview)
+            else:
+                await message.answer("Ваши бесплатные токены на нуле, "
+                                     "ждите понедельника или зарегистрируйтесь и оформите подписку.",
+                                     reply_markup=inline_markup_reg)
     else:
-        if flag > 0 and r_tokens > 0:
-            user_question = message.text
-            print(f"User question: {user_question}")
-            if STATE == 'dally2':
-                await send_image(message)
-                return
-            # Отправляем анимацию перед запросом к OpenAI GPT
-            processing_message = await message.answer(random.choice(options))
-
-            # Получаем текущую историю пользователя
-            chat_history, response_history = await get_user_history(user_id)
-
-            chat_history = json.loads(chat_history) if chat_history else []
-            response_history = json.loads(response_history) if response_history else []
-
-            # Добавляем новое сообщение к истории
-            chat_history.append({"role": "user", "content": user_question})
-
-            # Обновляем историю в базе данных
-            await update_user_history(user_id, chat_history, response_history)
-
-            # Имитация анимации перед запросом к OpenAI GPT завершена
-
-            response = await generate_response(user_id, chat_history, message)
-            print(f"OpenAI response: {response}")
-
-            # Удаляем сообщение с анимацией перед отправкой ответа
-            await bot.delete_message(chat_id=processing_message.chat.id, message_id=processing_message.message_id)
-
-            # Добавляем ответ к истории ответов
-            response_history.append({"role": "assistant", "content": response})
-
-            await add_response_to_history(user_id, response_history)
-
-            await message.answer(response, reply_markup=menu_keyboard)
-
-            await calculate_remaining_tokens(user_id)
-        elif flag > 1:
-            await message.answer("Ваши бесплатные токены на нуле, "
-                                 "ждите понедельника или оформите подписку.", reply_markup=inline_submit_preview)
-        else:
-            await message.answer("Ваши бесплатные токены на нуле, "
-                                 "ждите понедельника или зарегистрируйтесь и оформите подписку.",
-                                 reply_markup=inline_markup_reg)
+        await message.answer("Для использования бота подпишите на наш канал",
+                             reply_markup=inline_markup_reg)

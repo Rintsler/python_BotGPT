@@ -9,6 +9,7 @@ async def create_table():
         await cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                state_ai TEXT,
                 user_id INTEGER,
                 flag INTEGER DEFAULT 0,
                 username TEXT,
@@ -48,13 +49,41 @@ async def create_info_key_table():
         await db.commit()
 
 
+async def set_state_ai(user_id, state_ai):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            await db.execute('''
+                                UPDATE users
+                                SET state_ai = ?
+                                WHERE user_id = ?
+                            ''', (state_ai, user_id))
+            await db.commit()
+    except Exception as e:
+        print(f"Error updating state_ai: {e}")
+
+
+async def get_state_ai(user_id):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                        SELECT state_ai
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
+            result = await cursor.fetchone()
+            return result[0] if result else 0
+    except Exception as e:
+        print(f"Ошибка get_state_ai: {e}")
+        return None
+
+
 # Добавление нового пользователя в базу данных
-async def add_user(user_id, username, tokens, flag):
+async def add_user(user_id, username, registration_date, tokens, flag):
     async with aiosqlite.connect('Users.db') as db:
         await db.execute('''
-            INSERT INTO users (user_id, username, tokens, flag)
-            VALUES (?, ?, ?, ?)
-        ''', (user_id, username, tokens, flag))
+                            INSERT INTO users (user_id, username, registration_date, tokens, flag)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (user_id, username, registration_date, tokens, flag))
         await db.commit()
 
 
@@ -63,11 +92,11 @@ async def reg_user(reg_date, flag, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-            UPDATE users
-            SET registration_date = ?,
-            flag = ?
-            WHERE user_id = ?
-        ''', (reg_date, flag, user_id))
+                                UPDATE users
+                                SET registration_date = ?,
+                                flag = ?
+                                WHERE user_id = ?
+                            ''', (reg_date, flag, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error updating user: {e}")
@@ -78,12 +107,12 @@ async def update_subscribe(flag, sub_date, tokens, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-            UPDATE users
-            SET flag = ?,
-            sub_date = ?,
-            tokens = ?
-            WHERE user_id = ?
-        ''', (flag, sub_date, tokens, user_id))
+                                UPDATE users
+                                SET flag = ?,
+                                sub_date = ?,
+                                tokens = ?
+                                WHERE user_id = ?
+                            ''', (flag, sub_date, tokens, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error updating user: {e}")
@@ -93,11 +122,11 @@ async def new_chat(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-            UPDATE users
-            SET chat_history = ?,
-            response_history = ?
-            WHERE user_id = ?
-            ''', ('[]', '[]', user_id))  # Обнуляем историю чата
+                                UPDATE users
+                                SET chat_history = ?,
+                                response_history = ?
+                                WHERE user_id = ?
+                                ''', ('[]', '[]', user_id))  # Обнуляем историю чата
             await db.commit()
     except Exception as e:
         print(f"Ошибка при обнулении чата: {e}")
@@ -107,8 +136,8 @@ async def get_tokens(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-            SELECT tokens FROM users WHERE user_id = ?
-            ''', (user_id,))
+                                        SELECT tokens FROM users WHERE user_id = ?
+                                        ''', (user_id,))
             tokens = await cursor.fetchone()
             return tokens[0]
     except Exception as e:
@@ -120,10 +149,10 @@ async def update_flag(user_id, flag):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-            UPDATE users
-            SET flag = ?
-            WHERE user_id = ?
-            ''', (flag, user_id))
+                                UPDATE users
+                                SET flag = ?
+                                WHERE user_id = ?
+                                ''', (flag, user_id))
             await db.commit()
     except Exception as e:
         print(f"Ошибка при обнулении чата: {e}")
@@ -133,8 +162,8 @@ async def get_flag(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-            SELECT flag FROM users WHERE user_id = ?
-            ''', (user_id,))
+                                        SELECT flag FROM users WHERE user_id = ?
+                                        ''', (user_id,))
             flag = await cursor.fetchone()
             return flag[0] if flag else 0
     except Exception as e:
@@ -146,8 +175,8 @@ async def get_user_history(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-            SELECT chat_history, response_history FROM users WHERE user_id = ?
-            ''', (user_id,))
+                                        SELECT chat_history, response_history FROM users WHERE user_id = ?
+                                        ''', (user_id,))
             result = await cursor.fetchone()
             if result is not None:
                 chat_history, response_history = result
@@ -182,10 +211,10 @@ async def add_response_to_history(user_id, response_history):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-            UPDATE users
-            SET response_history = ?
-            WHERE user_id = ?
-            ''', (json.dumps(response_history, ensure_ascii=False), user_id))
+                                UPDATE users
+                                SET response_history = ?
+                                WHERE user_id = ?
+                                ''', (json.dumps(response_history, ensure_ascii=False), user_id))
             await db.commit()
     except Exception as e:
         print(f"Ошибка при обновлении истории ответов: {e}")
@@ -196,10 +225,10 @@ async def update_tokens_used(tokens_used, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-                                        UPDATE users
-                                        SET tokens_used = tokens_used + ?
-                                        WHERE user_id = ?
-                                        ''', (tokens_used, user_id))
+                                UPDATE users
+                                SET tokens_used = tokens_used + ?
+                                WHERE user_id = ?
+                                ''', (tokens_used, user_id))
             await db.commit()
     except Exception as e:
         print(f"Ошибка при обновлении поля использованных токенов: {e}")
@@ -240,10 +269,10 @@ async def get_subscribe(user_id):
             # Дописать расчет остатка дней подписки....................................
 
             cursor = await db.execute('''
-            SELECT subscribe
-            FROM users
-            WHERE user_id = ?
-            ''', (user_id,))
+                                        SELECT subscribe
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
             result = await cursor.fetchone()
             return result[0] if result else 0
     except Exception as e:
@@ -255,10 +284,10 @@ async def get_user_data(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-            SELECT *
-            FROM users
-            WHERE user_id = ?
-            ''', (user_id,))
+                                        SELECT *
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
             result = await cursor.fetchone()
             return result
     except Exception as e:
@@ -270,10 +299,10 @@ async def get_sub_date(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-            SELECT sub_date
-            FROM users
-            WHERE user_id = ?
-            ''', (user_id,))
+                                        SELECT sub_date
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
             result = await cursor.fetchone()
             return result[0] if result else 0
     except Exception as e:

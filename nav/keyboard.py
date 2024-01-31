@@ -83,8 +83,11 @@ inline_tp = InlineKeyboardMarkup(
 inline_markup_reg = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text='👤 Подписаться', callback_data="reg")
-        ]
+            InlineKeyboardButton(text='👤 Подписаться', url='https://t.me/+Myoz4F6P9c9hYTIy')
+        ],
+        [
+            InlineKeyboardButton(text='Готово', callback_data="reg")
+        ],
     ],
     resize_keyboard=True
 )

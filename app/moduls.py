@@ -3,8 +3,12 @@ import time
 import traceback
 from datetime import datetime, timedelta
 import openai
+from aiogram.types import CallbackQuery
+
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
-from data.db_app import calculate_remaining_tokens, update_tokens_used, get_user_data
+from data.config import chat_id, bot, dp
+from data.db_app import calculate_remaining_tokens, update_tokens_used, get_user_data, add_user
+from aiogram import types, Bot
 
 
 async def calculate_remaining_days(sub_date, flag):
@@ -102,7 +106,7 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message):
 
 async def profile(user_id, ):
     subscribe = ''
-    pk, user_id, flag, username, registration_date, chat_history, response_history, tokens, tokens_used, \
+    pk, state_ai, user_id, flag, username, registration_date, chat_history, response_history, tokens, tokens_used, \
         sub_date, remaining_days, remaining_tokens = await get_user_data(user_id)
     user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, tokens,
                  tokens_used, sub_date, remaining_days, remaining_tokens]
