@@ -6,7 +6,7 @@ from app.moduls import generate_response, profile, counting_pay, Subscribe
 from app.update_keys import get_unused_key
 from data.config import bot, chat_id
 from data.db_app import reg_user, new_chat, get_user_history, update_user_history, \
-    add_response_to_history, calculate_remaining_tokens, set_state_ai, get_state_ai, get_flag_and_req, add_user
+    add_response_to_history, set_state_ai, get_state_ai, get_flag_and_req, add_user, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai, \
     inline_submit_period
@@ -60,51 +60,47 @@ async def submit(call: types.CallbackQuery):
                                     reply_markup=inline_submit_preview)
 
 
+# ======================================================================================================================
+#                               Выбор тарифа
+# ======================================================================================================================
 async def Light(call: types.CallbackQuery):
-    await bot.edit_message_text(
-        'На какой период хотите оформить подписку Light?',
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=inline_submit_period
-    )
-    Metadata.subscription = 'Подписка Light'
+    await bot.edit_message_text('📝 Текстовый диалог - 35 запросов в сутки\n'
+                                '🖼️ Генерация изображений - 15 запросов в сутки\n'
+                                'На какой период хотите подключить тариф Light?',
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=inline_submit_period
+                                )
+    Metadata.sub_sum = 10000
+    Metadata.subscription = 'Light'
 
 
 async def Middle(call: types.CallbackQuery):
-    await bot.edit_message_text(
-        'На какой период хотите оформить подписку Middle?',
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=inline_submit_period
-    )
-    Metadata.subscription = 'Подписка Middle'
+    await bot.edit_message_text('📝 Текстовый диалог - без ограничений 😺\n'
+                                '🖼️ Генерация изображений - 40 запросов в сутки\n'
+                                'На какой период хотите подключить тариф Middle?',
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=inline_submit_period
+                                )
+    Metadata.sub_sum = 25000
+    Metadata.subscription = 'Middle'
 
 
 async def Full(call: types.CallbackQuery):
-    await bot.edit_message_text(
-        'На какой период хотите оформить подписку Full?',
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=inline_submit_period
-    )
-    Metadata.subscription = 'Подписка Full'
+    await bot.edit_message_text('♾️ Полный безлимит на запросы к Izi 🤩\n'
+                                'На какой период хотите подключить тариф Premium?',
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=inline_submit_period
+                                )
+    Metadata.sub_sum = 45000
+    Metadata.subscription = 'Premium'
 
 
-async def month(call: types.CallbackQuery):
-    description = 'ключевые моменты подписки'
-    await counting_pay(1, description, call.from_user.id)
-
-
-async def month_6(call: types.CallbackQuery):
-    description = 'ключевые моменты подписки'
-    await counting_pay(5, description, call.from_user.id)
-
-
-async def year(call: types.CallbackQuery):
-    description = 'ключевые моменты подписки'
-    await counting_pay(10, description, call.from_user.id)
-
-
+# ======================================================================================================================
+#                               Возврат к списку тарифов
+# ======================================================================================================================
 async def back_to_subscriptions(call: types.CallbackQuery):
     subscribe_text = await Subscribe()
     await bot.edit_message_text(subscribe_text,
@@ -113,6 +109,27 @@ async def back_to_subscriptions(call: types.CallbackQuery):
                                 reply_markup=inline_submit_preview)
 
 
+# ======================================================================================================================
+#                               Выбор периода
+# ======================================================================================================================
+async def month(call: types.CallbackQuery):
+    await counting_pay(1, call.from_user.id)
+    Metadata.sub_period = 1
+
+
+async def month_6(call: types.CallbackQuery):
+    await counting_pay(5, call.from_user.id)
+    Metadata.sub_period = 6
+
+
+async def year(call: types.CallbackQuery):
+    await counting_pay(10, call.from_user.id)
+    Metadata.sub_period = 12
+
+
+# ======================================================================================================================
+#                               Отмена оплаты
+# ======================================================================================================================
 async def cancel_payment(call: types.CallbackQuery):
     await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
 
@@ -238,18 +255,20 @@ async def echo(message: types.Message):
         # ==================================================================================================================
         else:
             state_ai = await get_state_ai(user_id)
-            if state_ai == 'delle2' and request_img > 0:
-                # Отправляем анимацию перед запросом к OpenAI GPT
-                processing_message = await message.answer(random.choice(options))
-                await send_image(message)
-                # Удаляем сообщение с анимацией перед отправкой ответа
-                await bot.delete_message(chat_id=processing_message.chat.id,
-                                         message_id=processing_message.message_id)
-            else:
-                await message.answer('Дневной лимит для генерации изображений исчерпан. Жди следующего дня или можешь '
-                                     'выбрать тариф и продолжить',
-                                     reply_markup=inline_submit_preview)
-            if flag > 0 and request > 0:
+            if state_ai == 'delle2':
+                if request_img != 0:
+                    # Отправляем анимацию перед запросом к OpenAI GPT
+                    processing_message = await message.answer(random.choice(options))
+                    await send_image(message)
+                    await update_requests(user_id, request + 1, request_img)
+                    # Удаляем сообщение с анимацией перед отправкой ответа
+                    await bot.delete_message(chat_id=processing_message.chat.id,
+                                             message_id=processing_message.message_id)
+                else:
+                    await message.answer(
+                        'Бесплатный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',
+                        reply_markup=inline_submit_preview)
+            elif flag > 0 and request != 0:
                 user_question = message.text
                 print(f"User question: {user_question}")
                 # Отправляем анимацию перед запросом к OpenAI GPT
@@ -269,7 +288,7 @@ async def echo(message: types.Message):
 
                 # Имитация анимации перед запросом к OpenAI GPT завершена
 
-                response = await generate_response(user_id, chat_history, message)
+                response = await generate_response(user_id, chat_history, message, request, request_img)
                 print(f"OpenAI response: {response}")
 
                 # Удаляем сообщение с анимацией перед отправкой ответа
@@ -282,12 +301,9 @@ async def echo(message: types.Message):
                 await add_response_to_history(user_id, response_history)
 
                 await message.answer(response, reply_markup=menu_keyboard)
-
-                await calculate_remaining_tokens(user_id)
             else:
-                await message.answer('Дневной лимит для ответов IZI исчерпан. Жди следующего дня или можешь '
-                                     'выбрать тариф и продолжить',
+                await message.answer('Дневной лимит для ответов Izi исчерпан. Выберите тариф и продолжите 🛒',
                                      reply_markup=inline_submit_preview)
     else:
-        await message.answer("Для использования бота подпишите на наш канал",
+        await message.answer("Для использования бота подпишите на наш канал ✔️",
                              reply_markup=inline_markup_reg)

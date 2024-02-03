@@ -5,7 +5,8 @@ from data.config import bot
 from data.controllers import start_cmd, echo, submit, back_to_profile, tp, bot_dialog, check_sub, delle_2, delle_3, \
     Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions
 from data.db_app import update_subscribe
-from data.pay import order_itog, order_gen
+from data.metadata import Metadata
+from data.pay import order_gen
 from aiogram import types
 from datetime import datetime
 from nav.keyboard import menu_keyboard
@@ -37,7 +38,7 @@ router.callback_query.register(cancel_payment, F.data == 'cancel_payment')
 router.callback_query.register(order_gen, F.data == 'gen_text')
 router.callback_query.register(order_gen, F.data == 'gen_post')
 router.callback_query.register(order_gen, F.data == 'gen_img')
-router.callback_query.register(order_itog, F.data == 'itog')
+# router.callback_query.register(order_itog, F.data == 'itog')
 
 
 # ======================================================================================================================
@@ -47,10 +48,20 @@ router.callback_query.register(order_itog, F.data == 'itog')
 async def successful_pay(message: types.Message):
     user_id = message.from_user.id
     sub_date = datetime.now().strftime("%Y-%m-%d %H:%M")
-    tokens = 0
-    await update_subscribe(3, sub_date, tokens, user_id)
+    if Metadata.sub_period == 1:
+        request = 35
+        request_img = 15
+        await update_subscribe(2, sub_date, request, request_img, user_id)
+    elif Metadata.sub_period == 6:
+        request = -1
+        request_img = 40
+        await update_subscribe(3, sub_date, request, request_img, user_id)
+    elif Metadata.sub_period == 12:
+        request = -1
+        request_img = -1
+        await update_subscribe(4, sub_date, request, request_img, user_id)
 
-    response_text = f'Вы выбрали подписку тариф на месяц. Спасибо!'
+    response_text = f'Вы выбрали тариф {Metadata.subscription}. Спасибо!'
     await message.answer(response_text, reply_markup=menu_keyboard)
 
 

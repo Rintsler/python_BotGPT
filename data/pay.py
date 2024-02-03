@@ -1,8 +1,6 @@
 from aiogram import types
 from aiogram.types import LabeledPrice, InlineKeyboardMarkup, InlineKeyboardButton
 from data.config import bot
-from data.metadata import Metadata
-from nav.keyboard import inline_pay
 
 CHECK = [0, 0, 0]
 TEXT = ["", "", ""]
@@ -128,85 +126,6 @@ async def order_gen(call: types.CallbackQuery):
     await bot.delete_message(call.from_user.id, call.message.message_id)
 
 
-async def order_itog(call: types.CallbackQuery):
-    await bot.delete_message(call.from_user.id, call.message.message_id)
-    await call.message.answer(f'Сумма к оплате составила:\n{sum(CHECK)}', reply_markup=inline_pay)
-
-
-# ===================================================================================================================
-#                                            Ордер к оплате
-# ===================================================================================================================
-# async def order(call: types.CallbackQuery, label=None):
+# async def order_itog(call: types.CallbackQuery):
 #     await bot.delete_message(call.from_user.id, call.message.message_id)
-#     await bot.send_invoice(
-#         chat_id=call.from_user.id,
-#         title='Оплата подписки в боте',
-#         description=Metadata.sub_period,
-#         payload='month_sub',
-#         provider_token=SBERTOKEN,
-#         currency='RUB',
-#         prices=[LabeledPrice(label=label, amount=int(sum(CHECK) * 100))],
-#         max_tip_amount=30000,
-#         suggested_tip_amounts=[5000, 10000, 15000, 20000],
-#         start_parameter='test_bot',
-#         provider_data=None,
-#         # photo_url='https://i.ibb.co/zGw5X0B/image.jpg',
-#         photo_size=100,
-#         photo_width=800,
-#         photo_height=450,
-#         need_name=False,
-#         need_phone_number=False,
-#         need_email=False,
-#         need_shipping_address=False,
-#         send_phone_number_to_provider=False,
-#         send_email_to_provider=False,
-#         is_flexible=False,
-#         disable_notification=False,
-#         protect_content=False,
-#         reply_to_message_id=None,
-#         allow_sending_without_reply=True,
-#         reply_markup=None,
-#         request_timeout=15
-#     )
-# #
-#
-# # ===================================================================================================================
-# #                                            ВЫБОР ПОДПИСКИ "ПРОФИ"
-# # ===================================================================================================================
-# async def order_pro(call: types.CallbackQuery):
-#     await bot.delete_message(call.from_user.id, call.message.message_id)
-#     await bot.send_invoice(
-#         chat_id=call.from_user.id,
-#         title='Оформление подписки',
-#         description='Год',
-#         payload='month_sub',
-#         provider_token=SBERTOKEN,
-#         currency='RUB',
-#         prices=[
-#             LabeledPrice(label='Генерация текста', amount=10000),
-#             LabeledPrice(label='Генерация изображений"', amount=45000),
-#             LabeledPrice(label='Генерация постов', amount=100000)
-#         ],
-#         max_tip_amount=30000,
-#         suggested_tip_amounts=[5000, 10000, 15000, 20000],
-#         start_parameter='test_bot',
-#         provider_data=None,
-#         # photo_url='https://i.ibb.co/zGw5X0B/image.jpg',
-#         photo_size=100,
-#         photo_width=800,
-#         photo_height=450,
-#         need_name=False,
-#         need_phone_number=False,
-#         need_email=False,
-#         need_shipping_address=False,
-#         send_phone_number_to_provider=False,
-#         send_email_to_provider=False,
-#         is_flexible=False,
-#         disable_notification=False,
-#         protect_content=False,
-#         reply_to_message_id=None,
-#         allow_sending_without_reply=True,
-#         reply_markup=None,
-#         request_timeout=15
-#     )
-#     user.subscribe = 3
+#     await call.message.answer(f'Сумма к оплате составила:\n{sum(CHECK)}', reply_markup=inline_pay)

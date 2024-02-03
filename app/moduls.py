@@ -6,7 +6,7 @@ import openai
 from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.config import bot, YOOTOKEN
-from data.db_app import calculate_remaining_tokens, update_tokens_used, get_user_data
+from data.db_app import update_tokens_used, get_user_data, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
 
@@ -30,7 +30,7 @@ async def calculate_remaining_days(sub_date, flag):
         return None
 
 
-async def generate_response(user_id, chat_history, message):
+async def generate_response(user_id, chat_history, message, request, request_img):
     api_key = await get_unused_key()
     while not api_key:
         print("Нет свободных ключей")
@@ -51,13 +51,8 @@ async def generate_response(user_id, chat_history, message):
             presence_penalty=0
         )
         otvet = response['choices'][0]['message']['content'].strip()
-        tokens_used = len(otvet)
-        print("tokens_used: ", tokens_used)
-        # Обновляем столбец tokens_used в базе данных
-        await update_tokens_used(tokens_used, user_id)
-        print("Обновляем столбец tokens_used в базе данных")
-        await calculate_remaining_tokens(user_id)
-        print("Обновляем столбец remaining_tokens в базе данных")
+        print("Обновляем столбцы request, request_img в базе данных")
+        await update_requests(user_id, request, request_img + 1)
         await reset_key_status(api_key)
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
@@ -67,7 +62,7 @@ async def generate_response(user_id, chat_history, message):
         return handle_rate_limit_error(user_id, api_key, chat_history, message)
 
 
-async def handle_rate_limit_error(user_id, api_key, chat_history, message):
+async def handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img):
     await set_key_status_to_2(api_key)
     print("Пытаюсь отправить второй раз")
     api_key = await get_unused_key()
@@ -92,9 +87,8 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message):
         )
         otvet = response['choices'][0]['message']['content'].strip()
         print("Пытаюсь отправить второй раз")
-        tokens_used = len(otvet)
         # Обновляем столбец tokens_used в базе данных
-        await update_tokens_used(tokens_used, user_id)
+        await update_requests(user_id, request, request_img)
         await reset_key_status(api_key)
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
@@ -139,36 +133,35 @@ async def profile(user_id):
 
 async def Subscribe():
     subscribe_text = (
-        'Хочешь дальше общаться с ботом IZI, выбери подходящий себе тариф 👇\n\n'
+        'Хочешь дальше общаться с ботом Izi, выбери подходящий себе тариф 👇\n\n'
         '⭐️ Тариф Light:'
+        '\nОтветы Izi в режиме текстового диалога - лимит 35 запросов в сутки'
+        '\nIzi сгенерирует изображение по вашему запросу - лимит 15 запросов в сутки'
         '\n\n'
         '⭐️ Тариф Middle:'
+        '\nОтветы Izi в режиме текстового диалога - без ограничений'
+        '\nIzi сгенерирует изображение по вашему запросу - лимит 40 запросов в сутки'
         '\n\n'
         '⭐️ Тариф Premium:'
-        '\n\n'
+        '\nПолный безлимит\n\n'
         '☺️Каждый тариф можно оформить на разные периоды 🗓'
     )
     return subscribe_text
 
 
-async def counting_pay(factor, description, user_id, sub_sum=0):
-    if Metadata.subscription in 'Подписка Light':
-        sub_sum = 10000 * factor
-    elif Metadata.subscription in 'Подписка Middle':
-        sub_sum = 35000 * factor
-    elif Metadata.subscription in 'Подписка Full':
-        sub_sum = 60000 * factor
+async def counting_pay(factor, user_id):
+    sub_sum = Metadata.sub_sum * factor
     await bot.send_invoice(
         chat_id=user_id,
-        title='Квитанция к оплате за подписку',
-        description=description,
+        title='Квитанция к оплате',
+        description='Тариф',
         payload='month_sub',
         provider_token=YOOTOKEN,
         currency='RUB',
-        prices=[LabeledPrice(label=Metadata.subscription, amount=sub_sum)],
-        max_tip_amount=30000,
+        prices=[LabeledPrice(label='Тариф ' + Metadata.subscription, amount=sub_sum)],
+        max_tip_amount=1000000000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
-        start_parameter='test_bot',
+        start_parameter='Izi_bot',
         provider_data=None,
         # photo_url='https://i.ibb.co/zGw5X0B/image.jpg',
         # photo_size=100,

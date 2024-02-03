@@ -61,7 +61,7 @@ inline_submit_preview = InlineKeyboardMarkup(
             InlineKeyboardButton(text="Middle", callback_data='Middle')
         ],
         [
-            InlineKeyboardButton(text="Premium", callback_data='Full')
+            InlineKeyboardButton(text="👑 Premium", callback_data='Full')
         ],
         [
             InlineKeyboardButton(text="← назад", callback_data='back_to_profile')
@@ -97,8 +97,8 @@ inline_submit_period = InlineKeyboardMarkup(
 inline_kb_pay = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Оплатить", pay=True),
-            InlineKeyboardButton(text="Отмена", callback_data='cancel_payment')
+            InlineKeyboardButton(text="💳 Оплатить", pay=True),
+            InlineKeyboardButton(text="✖️ Отмена", callback_data='cancel_payment')
         ]
     ]
 )
@@ -123,23 +123,8 @@ inline_markup_reg = InlineKeyboardMarkup(
             InlineKeyboardButton(text='👤 Подписаться', url='https://t.me/+Myoz4F6P9c9hYTIy')
         ],
         [
-            InlineKeyboardButton(text='Готово', callback_data="reg")
+            InlineKeyboardButton(text='✔️ Готово', callback_data="reg")
         ],
     ],
     resize_keyboard=True
-)
-
-# ======================================================================================================================
-# ЧЕК-БОКСЫ
-# ======================================================================================================================
-inline_pay = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Оплатить", callback_data="pay")
-        ],
-        [
-            InlineKeyboardButton(text="← назад", callback_data='back')
-        ]
-    ],
-    resize_keyboard=False
 )

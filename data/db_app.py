@@ -18,7 +18,6 @@ async def create_table():
                 response_history TEXT NULL DEFAULT '[]',
                 request INTEGER DEFAULT 0,
                 request_img INTEGER DEFAULT 0,
-                tokens_used INTEGER DEFAULT 0,
                 sub_date DATETIME,
                 remaining_days INTEGER DEFAULT 0,
                 remaining_tokens INTEGER DEFAULT 0
@@ -107,16 +106,17 @@ async def add_user(user_id, username):
 
 
 # Обновление данных пользователя в базе данных
-async def update_subscribe(flag, sub_date, tokens, user_id):
+async def update_subscribe(flag, sub_date, request, request_img, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
                                 UPDATE users
                                 SET flag = ?,
                                 sub_date = ?,
-                                tokens = ?
+                                request = ?, 
+                                request_img = ?
                                 WHERE user_id = ?
-                            ''', (flag, sub_date, tokens, user_id))
+                            ''', (flag, sub_date, request, request_img, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error updating user: {e}")
@@ -226,28 +226,18 @@ async def update_tokens_used(tokens_used, user_id):
         return None
 
 
-async def calculate_remaining_tokens(user_id):
+async def update_requests(user_id, request, request_img):
     try:
         async with aiosqlite.connect('Users.db') as db:
-            cursor = await db.execute('''
-                                         SELECT tokens, tokens_used
-                                         FROM users
-                                         WHERE user_id = ?
-                                         ''', (user_id,))
-            result = await cursor.fetchone()
-            if result is not None:
-                tokens, tokens_used = result
-                remaining_tokens = tokens - tokens_used
-                await db.execute('''
-                                    UPDATE users
-                                    SET remaining_tokens = ?
-                                    WHERE user_id = ?
-                                    ''', (remaining_tokens, user_id))
-                await db.commit()
-                print("remaining_tokens: ", remaining_tokens)
-                return remaining_tokens
-            else:
-                return 0
+            request = request - 1
+            request_img = request_img - 1
+            await db.execute('''
+                                UPDATE users
+                                SET request = ?,
+                                request_img = ?
+                                WHERE user_id = ?
+                                ''', (request, request_img, user_id))
+            await db.commit()
     except Exception as e:
         print(f"Ошибка calculate_remaining_tokens: {e}")
         return None
