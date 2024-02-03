@@ -3,12 +3,12 @@ import time
 import traceback
 from datetime import datetime, timedelta
 import openai
-from aiogram.types import CallbackQuery
-
+from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
-from data.config import chat_id, bot, dp
-from data.db_app import calculate_remaining_tokens, update_tokens_used, get_user_data, add_user
-from aiogram import types, Bot
+from data.config import bot, YOOTOKEN
+from data.db_app import calculate_remaining_tokens, update_tokens_used, get_user_data
+from data.metadata import Metadata
+from nav.keyboard import inline_kb_pay
 
 
 async def calculate_remaining_days(sub_date, flag):
@@ -104,11 +104,11 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message):
         return handle_rate_limit_error(user_id, api_key, chat_history, message)
 
 
-async def profile(user_id, ):
+async def profile(user_id):
     subscribe = ''
-    pk, state_ai, user_id, flag, username, registration_date, chat_history, response_history, tokens, tokens_used, \
-        sub_date, remaining_days, remaining_tokens = await get_user_data(user_id)
-    user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, tokens,
+    pk, state_ai, user_id, flag, username, registration_date, chat_history, response_history, request, request_img, \
+        tokens_used, sub_date, remaining_days, remaining_tokens = await get_user_data(user_id)
+    user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, request, request_img,
                  tokens_used, sub_date, remaining_days, remaining_tokens]
     if sub_date:
         remaining_days = await calculate_remaining_days(sub_date, flag)
@@ -135,3 +135,56 @@ async def profile(user_id, ):
         f"🗓 Осталось дней подписки: {remaining_days}\n"
     )
     return profile_text
+
+
+async def Subscribe():
+    subscribe_text = (
+        'Хочешь дальше общаться с ботом IZI, выбери подходящий себе тариф 👇\n\n'
+        '⭐️ Тариф Light:'
+        '\n\n'
+        '⭐️ Тариф Middle:'
+        '\n\n'
+        '⭐️ Тариф Premium:'
+        '\n\n'
+        '☺️Каждый тариф можно оформить на разные периоды 🗓'
+    )
+    return subscribe_text
+
+
+async def counting_pay(factor, description, user_id, sub_sum=0):
+    if Metadata.subscription in 'Подписка Light':
+        sub_sum = 10000 * factor
+    elif Metadata.subscription in 'Подписка Middle':
+        sub_sum = 35000 * factor
+    elif Metadata.subscription in 'Подписка Full':
+        sub_sum = 60000 * factor
+    await bot.send_invoice(
+        chat_id=user_id,
+        title='Квитанция к оплате за подписку',
+        description=description,
+        payload='month_sub',
+        provider_token=YOOTOKEN,
+        currency='RUB',
+        prices=[LabeledPrice(label=Metadata.subscription, amount=sub_sum)],
+        max_tip_amount=30000,
+        suggested_tip_amounts=[5000, 10000, 15000, 20000],
+        start_parameter='test_bot',
+        provider_data=None,
+        # photo_url='https://i.ibb.co/zGw5X0B/image.jpg',
+        # photo_size=100,
+        # photo_width=800,
+        # photo_height=450,
+        need_name=False,
+        need_phone_number=False,
+        need_email=False,
+        need_shipping_address=False,
+        send_phone_number_to_provider=False,
+        send_email_to_provider=False,
+        is_flexible=False,
+        disable_notification=False,
+        protect_content=False,
+        reply_to_message_id=None,
+        allow_sending_without_reply=True,
+        reply_markup=inline_kb_pay,
+        request_timeout=15
+    )

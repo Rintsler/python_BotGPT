@@ -16,7 +16,8 @@ async def create_table():
                 registration_date DATETIME,
                 chat_history TEXT NULL DEFAULT '[]',
                 response_history TEXT NULL DEFAULT '[]',
-                tokens INTEGER DEFAULT 0,
+                request INTEGER DEFAULT 0,
+                request_img INTEGER DEFAULT 0,
                 tokens_used INTEGER DEFAULT 0,
                 sub_date DATETIME,
                 remaining_days INTEGER DEFAULT 0,
@@ -78,28 +79,31 @@ async def get_state_ai(user_id):
 
 
 # Добавление нового пользователя в базу данных
-async def add_user(user_id, username, registration_date, tokens, flag):
-    async with aiosqlite.connect('Users.db') as db:
-        await db.execute('''
-                            INSERT INTO users (user_id, username, registration_date, tokens, flag)
-                            VALUES (?, ?, ?, ?, ?)
-                        ''', (user_id, username, registration_date, tokens, flag))
-        await db.commit()
-
-
-# Обновление данных пользователя в базе данных
-async def reg_user(reg_date, flag, user_id):
+async def reg_user(user_id, username, registration_date, request, request_img, flag):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
-                                UPDATE users
-                                SET registration_date = ?,
-                                flag = ?
+                                UPDATE users 
+                                SET user_id = ?, username = ?, registration_date = ?, 
+                                request = ?, request_img = ?, flag = ?
                                 WHERE user_id = ?
-                            ''', (reg_date, flag, user_id))
+                            ''', (user_id, username, registration_date, request, request_img, flag, user_id))
             await db.commit()
     except Exception as e:
-        print(f"Error updating user: {e}")
+        print(f"Error reg user: {e}")
+
+
+# Обновление данных пользователя в базе данных
+async def add_user(user_id, username):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            await db.execute('''
+                                INSERT INTO users (user_id, username)
+                                VALUES (?, ?)
+                            ''', (user_id, username))
+            await db.commit()
+    except Exception as e:
+        print(f"Error add user: {e}")
 
 
 # Обновление данных пользователя в базе данных
@@ -132,19 +136,6 @@ async def new_chat(user_id):
         print(f"Ошибка при обнулении чата: {e}")
 
 
-async def get_tokens(user_id):
-    try:
-        async with aiosqlite.connect('Users.db') as db:
-            cursor = await db.execute('''
-                                        SELECT tokens FROM users WHERE user_id = ?
-                                        ''', (user_id,))
-            tokens = await cursor.fetchone()
-            return tokens[0]
-    except Exception as e:
-        print(f"Error getting user by ID: {e}")
-        return None
-
-
 async def update_flag(user_id, flag):
     try:
         async with aiosqlite.connect('Users.db') as db:
@@ -158,14 +149,14 @@ async def update_flag(user_id, flag):
         print(f"Ошибка при обнулении чата: {e}")
 
 
-async def get_flag(user_id):
+async def get_flag_and_req(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-                                        SELECT flag FROM users WHERE user_id = ?
+                                        SELECT flag, request, request_img FROM users WHERE user_id = ?
                                         ''', (user_id,))
             flag = await cursor.fetchone()
-            return flag[0] if flag else 0
+            return flag
     except Exception as e:
         print(f"Получить флаг из БД не получилось: {e}")
         return None

@@ -17,6 +17,7 @@ SQLALCHEMY_URL = "sqlite+aiosqlite:///db.sqlite3"
 
 BOT_TOKEN = '6612241633:AAEXsFrv8UveeeDyWuziyVfquC2_HsFREeg'
 OPENAI_API_KEY = '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'
+# SBERTOKEN = '401643678:TEST:2e8c0c93-ff49-401c-8173-3689d162003f'
 YOOTOKEN = '381764678:TEST:74267'
 
 logging.basicConfig(level=logging.INFO)
