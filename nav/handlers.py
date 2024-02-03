@@ -48,18 +48,18 @@ router.callback_query.register(order_gen, F.data == 'gen_img')
 async def successful_pay(message: types.Message):
     user_id = message.from_user.id
     sub_date = datetime.now().strftime("%Y-%m-%d %H:%M")
-    if Metadata.sub_period == 1:
+    if Metadata.subscription == 'Light':
         request = 35
         request_img = 15
-        await update_subscribe(2, sub_date, request, request_img, user_id)
-    elif Metadata.sub_period == 6:
+        await update_subscribe(2, sub_date, request, request_img, Metadata.sub_period, user_id)
+    elif Metadata.subscription == 'Middle':
         request = -1
         request_img = 40
-        await update_subscribe(3, sub_date, request, request_img, user_id)
-    elif Metadata.sub_period == 12:
+        await update_subscribe(3, sub_date, request, request_img, Metadata.sub_period, user_id)
+    elif Metadata.subscription == 'Premium':
         request = -1
         request_img = -1
-        await update_subscribe(4, sub_date, request, request_img, user_id)
+        await update_subscribe(4, sub_date, request, request_img, Metadata.sub_period, user_id)
 
     response_text = f'Вы выбрали тариф {Metadata.subscription}. Спасибо!'
     await message.answer(response_text, reply_markup=menu_keyboard)

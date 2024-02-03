@@ -18,6 +18,7 @@ async def create_table():
                 response_history TEXT NULL DEFAULT '[]',
                 request INTEGER DEFAULT 0,
                 request_img INTEGER DEFAULT 0,
+                period_sub INTEGER DEFAULT 0,
                 sub_date DATETIME,
                 remaining_days INTEGER DEFAULT 0,
                 remaining_tokens INTEGER DEFAULT 0
@@ -106,7 +107,7 @@ async def add_user(user_id, username):
 
 
 # Обновление данных пользователя в базе данных
-async def update_subscribe(flag, sub_date, request, request_img, user_id):
+async def update_subscribe(flag, sub_date, request, request_img, period, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
@@ -114,9 +115,10 @@ async def update_subscribe(flag, sub_date, request, request_img, user_id):
                                 SET flag = ?,
                                 sub_date = ?,
                                 request = ?, 
-                                request_img = ?
+                                request_img = ?,
+                                period_sub = ?
                                 WHERE user_id = ?
-                            ''', (flag, sub_date, request, request_img, user_id))
+                            ''', (flag, sub_date, request, request_img, period, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error updating user: {e}")

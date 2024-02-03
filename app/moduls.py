@@ -6,7 +6,7 @@ import openai
 from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.config import bot, YOOTOKEN
-from data.db_app import update_tokens_used, get_user_data, update_requests
+from data.db_app import get_user_data, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
 

@@ -23,7 +23,9 @@ async def start_cmd(message: types.Message):
     first_name = message.from_user.first_name
     username = message.from_user.username
     user_id = message.from_user.id
-    await add_user(user_id, username)
+    result = await get_flag_and_req(user_id)
+    if not result:
+        await add_user(user_id, username)
     await message.answer(
         f'Привет, {first_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите "Готово". '
         f'Вы получите 15 бесплатных запросов для диалога с IZI и '
