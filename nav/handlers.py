@@ -3,10 +3,9 @@ from aiogram import Router
 from aiogram.filters import CommandStart
 from data.config import bot
 from data.controllers import start_cmd, echo, submit, back_to_profile, tp, bot_dialog, check_sub, delle_2, delle_3, \
-    Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions
+    Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions, kandinsky
 from data.db_app import update_subscribe
 from data.metadata import Metadata
-from data.pay import order_gen
 from aiogram import types
 from datetime import datetime
 from nav.keyboard import menu_keyboard
@@ -27,6 +26,7 @@ router.callback_query.register(year, F.data == 'year')
 
 router.callback_query.register(tp, F.data == 'tp')
 
+router.callback_query.register(kandinsky, F.data == 'kandinsky')
 router.callback_query.register(delle_2, F.data == 'delle_2')
 router.callback_query.register(delle_3, F.data == 'delle_3')
 router.callback_query.register(bot_dialog, F.data == 'bot_dialog')
@@ -35,19 +35,26 @@ router.callback_query.register(back_to_profile, F.data == 'back_to_profile')
 router.callback_query.register(back_to_subscriptions, F.data == 'back_to_subscriptions')
 router.callback_query.register(cancel_payment, F.data == 'cancel_payment')
 
-router.callback_query.register(order_gen, F.data == 'gen_text')
-router.callback_query.register(order_gen, F.data == 'gen_post')
-router.callback_query.register(order_gen, F.data == 'gen_img')
+# router.callback_query.register(order_gen, F.data == 'gen_text')
+# router.callback_query.register(order_gen, F.data == 'gen_post')
+# router.callback_query.register(order_gen, F.data == 'gen_img')
 # router.callback_query.register(order_itog, F.data == 'itog')
 
 
 # ======================================================================================================================
 #                                            УСПЕШНАЯ ОПЛАТА
 # ======================================================================================================================
+# Декоратор - ответ сервису на наличие товара
+@router.pre_checkout_query()
+async def process_pre_checkout_query(pre_checkout_query: types.PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+
 @router.message(F.successful_payment)
 async def successful_pay(message: types.Message):
     user_id = message.from_user.id
-    sub_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # sub_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    sub_date = datetime.now().strftime('%Y-%m-%d %H:%M')
     if Metadata.subscription == 'Light':
         request = 35
         request_img = 15
@@ -61,14 +68,8 @@ async def successful_pay(message: types.Message):
         request_img = -1
         await update_subscribe(4, sub_date, request, request_img, Metadata.sub_period, user_id)
 
-    response_text = f'Вы выбрали тариф {Metadata.subscription}. Спасибо!'
+    response_text = f'Вы подключили тариф {Metadata.subscription}. Спасибо!'
     await message.answer(response_text, reply_markup=menu_keyboard)
-
-
-# Декоратор - ответ сервису на наличие товара
-@router.pre_checkout_query()
-async def process_pre_checkout_query(pre_checkout_query: types.PreCheckoutQuery):
-    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
 
 router.message.register(echo)

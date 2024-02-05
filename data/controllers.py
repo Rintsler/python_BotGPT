@@ -1,7 +1,10 @@
+import asyncio
 import json
 import random
 import openai
 from aiogram import types
+
+from app.modul_Kandinsky import send_image_kandinsky
 from app.moduls import generate_response, profile, counting_pay, Subscribe
 from app.update_keys import get_unused_key
 from data.config import bot, chat_id
@@ -41,7 +44,7 @@ async def submit(call: types.CallbackQuery):
 
     if flag == 2:
         await bot.edit_message_text(
-            'Заглушка - флаг 3.',
+            'У вас еще действует тариф',
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             reply_markup=inline_submit_preview
@@ -190,6 +193,13 @@ async def check_sub(call: types.CallbackQuery):
 # ======================================================================================================================
 #                               Выбор нейронки
 # ======================================================================================================================
+async def kandinsky(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    state_ai = 'kandinsky'
+    await set_state_ai(user_id, state_ai)
+    await call.message.answer('Ок! Дальше я на ваши сообщения буду отвечать изображениями 👩‍🎨')
+
+
 async def delle_2(call: types.CallbackQuery):
     user_id = call.from_user.id
     state_ai = 'delle2'
@@ -214,7 +224,7 @@ async def bot_dialog(call: types.CallbackQuery):
 async def send_image(message):
     api_key = await get_unused_key()
     print(api_key)
-    response = openai.Image.create(
+    response = await openai.Image.create(
         api_key=api_key,
         prompt=message.text,
         n=1,
@@ -266,6 +276,21 @@ async def echo(message: types.Message):
                     # Удаляем сообщение с анимацией перед отправкой ответа
                     await bot.delete_message(chat_id=processing_message.chat.id,
                                              message_id=processing_message.message_id)
+                else:
+                    await message.answer(
+                        'Бесплатный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',
+                        reply_markup=inline_submit_preview)
+            elif state_ai == 'kandinsky':
+                if request_img != 0:
+                    # Отправляем анимацию перед запросом к OpenAI GPT
+                    await message.answer(random.choice(options))
+
+                    await send_image_kandinsky(message, message.text, message.message_id)
+
+                    await update_requests(user_id, request + 1, request_img)
+                    # Удаляем сообщение с анимацией перед отправкой ответа
+                    await bot.delete_message(chat_id=message.chat.id,
+                                             message_id=message.message_id)
                 else:
                     await message.answer(
                         'Бесплатный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',

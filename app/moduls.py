@@ -1,7 +1,6 @@
 import datetime
 import time
 import traceback
-from datetime import datetime, timedelta
 import openai
 from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
@@ -9,6 +8,54 @@ from data.config import bot, YOOTOKEN
 from data.db_app import get_user_data, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
+import sqlite3
+import asyncio
+from datetime import datetime, timedelta
+
+
+async def update_tariffs_sub():
+    # Подключаемся к базе данных
+    connection = sqlite3.connect('users.db')
+    cursor = connection.cursor()
+
+    # Получаем текущую дату
+    current_date = datetime.now()
+
+    # Выполняем запрос для выборки данных
+    cursor.execute('SELECT id, sub_date, period_sub, flag FROM users WHERE flag > 1')
+
+    rows = cursor.fetchall()
+    print("Проверяю базу")
+    for row in rows:
+        user_id, sub_date, period_sub, flag = row
+
+        # Проверяем, что значение sub_date не является None перед преобразованием
+        if sub_date:
+            # Преобразуем строку в формат datetime с учетом миллисекунд
+            sub_date = datetime.strptime(sub_date, '%Y-%m-%d %H:%M')
+
+            # Проверяем условия для обновления
+            if flag > 1:
+                if period_sub == 1:
+                    if (current_date - sub_date).days > 30:
+                        cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
+                elif period_sub == 6:
+                    if (current_date - sub_date).days > 180:
+                        cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
+                elif period_sub == 12:
+                    if (current_date - sub_date).days > 364:
+                        cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
+
+    # Сохраняем изменения и закрываем соединение
+    print("Обновил подписки")
+    connection.commit()
+    connection.close()
+
+
+async def scheduler():
+    while True:
+        await update_tariffs_sub()
+        await asyncio.sleep(86400)
 
 
 async def calculate_remaining_days(sub_date, flag):

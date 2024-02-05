@@ -37,6 +37,9 @@ menu_profile = InlineKeyboardMarkup(
 menu_ai = InlineKeyboardMarkup(
     inline_keyboard=[
         [
+            InlineKeyboardButton(text="Генерация изображения Kandinsky", callback_data='kandinsky')
+        ],
+        [
             InlineKeyboardButton(text="Генерация изображения Dell-e 2", callback_data='delle_2')
         ],
         [

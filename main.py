@@ -4,6 +4,7 @@ import sys
 from data.config import dp
 from data.db_app import create_info_key_table, create_table
 from nav.handlers import *
+from app.moduls import scheduler
 
 
 async def main():
@@ -18,7 +19,11 @@ if __name__ == '__main__':
     try:
         # Создаем и запускаем asyncio loop
         loop = asyncio.get_event_loop()
+
+        # Запуск планировщика в том же цикле событий asyncio
+        loop.create_task(scheduler())
         loop.run_until_complete(main())
         asyncio.run(main())
+
     except KeyboardInterrupt:
         print('Exit')
