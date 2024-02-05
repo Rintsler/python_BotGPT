@@ -71,7 +71,7 @@ async def submit(call: types.CallbackQuery):
 async def Light(call: types.CallbackQuery):
     await bot.edit_message_text('📝 Текстовый диалог - 35 запросов в сутки\n'
                                 '🖼️ Генерация изображений - 15 запросов в сутки\n'
-                                'На какой период хотите подключить тариф Light?',
+                                'На какой период хотите подключить тариф - Базовый?',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
                                 reply_markup=inline_submit_period
@@ -83,7 +83,7 @@ async def Light(call: types.CallbackQuery):
 async def Middle(call: types.CallbackQuery):
     await bot.edit_message_text('📝 Текстовый диалог - без ограничений 😺\n'
                                 '🖼️ Генерация изображений - 40 запросов в сутки\n'
-                                'На какой период хотите подключить тариф Middle?',
+                                'На какой период хотите подключить тариф - Расширенный?',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
                                 reply_markup=inline_submit_period
@@ -94,7 +94,7 @@ async def Middle(call: types.CallbackQuery):
 
 async def Full(call: types.CallbackQuery):
     await bot.edit_message_text('♾️ Полный безлимит на запросы к Izi 🤩\n'
-                                'На какой период хотите подключить тариф Premium?',
+                                'На какой период хотите подключить тариф - Премиум?',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
                                 reply_markup=inline_submit_period

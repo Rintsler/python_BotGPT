@@ -20,8 +20,7 @@ async def create_table():
                 request_img INTEGER DEFAULT 0,
                 period_sub INTEGER DEFAULT 0,
                 sub_date DATETIME,
-                remaining_days INTEGER DEFAULT 0,
-                remaining_tokens INTEGER DEFAULT 0
+                remaining_days INTEGER DEFAULT 0
             )
         ''')
         await db.commit()

@@ -58,13 +58,13 @@ menu_ai = InlineKeyboardMarkup(
 inline_submit_preview = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Light", callback_data='Light')
+            InlineKeyboardButton(text="Базовый", callback_data='Light')
         ],
         [
-            InlineKeyboardButton(text="Middle", callback_data='Middle')
+            InlineKeyboardButton(text="Расширенный", callback_data='Middle')
         ],
         [
-            InlineKeyboardButton(text="👑 Premium", callback_data='Full')
+            InlineKeyboardButton(text="👑 Премиум", callback_data='Full')
         ],
         [
             InlineKeyboardButton(text="← назад", callback_data='back_to_profile')

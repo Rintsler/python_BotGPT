@@ -60,16 +60,16 @@ async def scheduler():
 
 async def calculate_remaining_days(sub_date, flag):
     try:
-        db_datetime = datetime.strptime(sub_date, "%Y-%m-%d %H:%M:%S")
+        db_datetime = datetime.strptime(sub_date, "%Y-%m-%d %H:%M")
         current_date = datetime.now()
         # Рассчитываем разницу в днях
-        if flag == 3:
+        if flag == 2:
             remaining_days = (db_datetime + timedelta(days=30)) - current_date
             return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
-        if flag == 4:
+        if flag == 3:
             remaining_days = (db_datetime + timedelta(days=180)) - current_date
             return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
-        if flag == 5:
+        if flag == 4:
             remaining_days = (db_datetime + timedelta(days=365)) - current_date
             return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
     except ValueError as e:
@@ -81,7 +81,7 @@ async def generate_response(user_id, chat_history, message, request, request_img
     api_key = await get_unused_key()
     while not api_key:
         print("Нет свободных ключей")
-        time.sleep(10)
+        await asyncio.sleep(10)
         api_key = await get_unused_key()
     try:
         await update_key_status(api_key, 1)
@@ -116,7 +116,7 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message, reque
     print("Пытаюсь отправить второй раз2")
     while not api_key:
         # print("Нет свободных ключей")
-        time.sleep(10)
+        await asyncio.sleep(10)
         api_key = await get_unused_key()
     try:
         await update_key_status(api_key, 1)
@@ -146,34 +146,38 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message, reque
 
 
 async def profile(user_id):
-    subscribe = ''
+    subscribe = period = ''
     pk, state_ai, user_id, flag, username, registration_date, chat_history, response_history, request, request_img, \
-        tokens_used, sub_date, remaining_days, remaining_tokens = await get_user_data(user_id)
+        period_sub, sub_date, remaining_days = await get_user_data(user_id)
     user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, request, request_img,
-                 tokens_used, sub_date, remaining_days, remaining_tokens]
+                 period_sub, sub_date, remaining_days]
     if sub_date:
         remaining_days = await calculate_remaining_days(sub_date, flag)
 
     for i in user_info:
         if i is None:
             i = ''
-    if flag == 3:
-        subscribe = "1 месяц"
-        remaining_tokens = "действует подписка"
-    elif flag == 4:
-        subscribe = "6 месяцев"
-        remaining_tokens = "действует подписка"
+    if flag == 2:
+        subscribe = "Базовый"
+    elif flag == 3:
+        subscribe = "Расширенный"
     elif flag == 5:
-        subscribe = "1 год"
-        remaining_tokens = "действует подписка"
+        subscribe = "Премиум"
+
+    if period_sub == 1:
+        period = "Месяц"
+    elif period_sub == 6:
+        period = "6 месяцев"
+    elif period_sub == 12:
+        period = "Год"
 
     profile_text = (
-        f"\t📊 Ваш профиль:\n"
-        f"👤 Ваш ID: {user_id}\n"
-        f"✅ Подписка: {subscribe}\n"
-        f"📕 Остаток токенов: {remaining_tokens}\n"
-        f"⏳ Дата регистрации: {registration_date}\n"
-        f"🗓 Осталось дней подписки: {remaining_days}\n"
+        f"📊 **Ваш профиль**\n\n"
+        f"👤 __Ваш ID:__ '{user_id}'\n\n"
+        f"✅ __Тариф:__ '{subscribe}'\n\n"
+        f"📕 __Период действия:__ '{period}'\n\n"
+        f"⏳ __Дата регистрации:__ '{registration_date}'\n\n"
+        f"🗓 __Осталось дней подписки:__ '{remaining_days}'\n"
     )
     return profile_text
 
@@ -181,16 +185,16 @@ async def profile(user_id):
 async def Subscribe():
     subscribe_text = (
         'Хочешь дальше общаться с ботом Izi, выбери подходящий себе тариф 👇\n\n'
-        '⭐️ Тариф Light:'
-        '\nОтветы Izi в режиме текстового диалога - лимит 35 запросов в сутки'
-        '\nIzi сгенерирует изображение по вашему запросу - лимит 15 запросов в сутки'
+        '⭐️ Тариф Базовый:'
+        '\n35 запросов в сутки - на ответы Izi в режиме текстового диалога'
+        '\n15 запросов в сутки - Izi сгенерирует изображение по вашему запросу'
         '\n\n'
-        '⭐️ Тариф Middle:'
-        '\nОтветы Izi в режиме текстового диалога - без ограничений'
-        '\nIzi сгенерирует изображение по вашему запросу - лимит 40 запросов в сутки'
+        '⭐️ Тариф Расширенный:'
+        '\nбез ограничений - ответы Izi в режиме текстового диалога'
+        '\n40 запросов в сутки - Izi сгенерирует изображение по вашему запросу'
         '\n\n'
-        '⭐️ Тариф Premium:'
-        '\nПолный безлимит\n\n'
+        '⭐️ Тариф Премиум:'
+        '\nПолный безлимит на все 😋\n\n'
         '☺️Каждый тариф можно оформить на разные периоды 🗓'
     )
     return subscribe_text
