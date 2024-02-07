@@ -99,7 +99,7 @@ async def generate_response(user_id, chat_history, message, request, request_img
         )
         otvet = response['choices'][0]['message']['content'].strip()
         print("Обновляем столбцы request, request_img в базе данных")
-        await update_requests(user_id, request, request_img + 1)
+        await update_requests(user_id, request - 1, request_img)
         await reset_key_status(api_key)
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
@@ -172,12 +172,12 @@ async def profile(user_id):
         period = "Год"
 
     profile_text = (
-        f"📊 **Ваш профиль**\n\n"
-        f"👤 __Ваш ID:__ '{user_id}'\n\n"
-        f"✅ __Тариф:__ '{subscribe}'\n\n"
-        f"📕 __Период действия:__ '{period}'\n\n"
-        f"⏳ __Дата регистрации:__ '{registration_date}'\n\n"
-        f"🗓 __Осталось дней подписки:__ '{remaining_days}'\n"
+        "📊 Ваш профиль\n\n"
+        f"👤 Ваш ID: {user_id}\n\n"
+        f"✅ Тариф: {subscribe}\n\n"
+        f"📕 Период действия: {period}\n\n"
+        f"⏳ Дата регистрации: {registration_date}\n\n"
+        f"🗓 Осталось дней подписки: {remaining_days}\n"
     )
     return profile_text
 

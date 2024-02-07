@@ -31,8 +31,8 @@ async def start_cmd(message: types.Message):
         await add_user(user_id, username)
     await message.answer(
         f'Привет, {first_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите "Готово". '
-        f'Вы получите 15 бесплатных запросов для диалога с IZI и '
-        f'5 запросов для генерации изображений.', reply_markup=inline_markup_reg)
+        'Вы получите 30 бесплатных запросов диалогах с Izi и 10 запросов на генерацию изображений.',
+        reply_markup=inline_markup_reg)
 
 
 # ======================================================================================================================
@@ -69,7 +69,7 @@ async def submit(call: types.CallbackQuery):
 #                               Выбор тарифа
 # ======================================================================================================================
 async def Light(call: types.CallbackQuery):
-    await bot.edit_message_text('📝 Текстовый диалог - 35 запросов в сутки\n'
+    await bot.edit_message_text('📝 Диалог с Izi - 35 запросов в сутки\n'
                                 '🖼️ Генерация изображений - 15 запросов в сутки\n'
                                 'На какой период хотите подключить тариф - Базовый?',
                                 chat_id=call.message.chat.id,
@@ -81,7 +81,7 @@ async def Light(call: types.CallbackQuery):
 
 
 async def Middle(call: types.CallbackQuery):
-    await bot.edit_message_text('📝 Текстовый диалог - без ограничений 😺\n'
+    await bot.edit_message_text('📝 Диалог с Izi - без ограничений 😺\n'
                                 '🖼️ Генерация изображений - 40 запросов в сутки\n'
                                 'На какой период хотите подключить тариф - Расширенный?',
                                 chat_id=call.message.chat.id,
@@ -167,27 +167,34 @@ async def back_to_profile(call: types.CallbackQuery):
 async def check_sub(call: types.CallbackQuery):
     user_id = call.from_user.id
     member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-    print(member)
+    print('Проверка на членство в канале: ', member)
     if member.status != 'left':
         flag, request, request_img = await get_flag_and_req(user_id)
         if flag == 0 or flag is None:
             username = call.from_user.username
             flag = 1
-            request = 15
-            request_img = 5
-            registration_date = call.message.date.strftime('%Y-%m-%d %H:%M:%S')
+            request = 30
+            request_img = 10
+            registration_date = call.message.date.strftime('%Y-%m-%d %H:%M')
             await reg_user(user_id, username, registration_date, request, request_img, flag)
             await call.message.answer(
-                f'Спасибо за подписку на наш канал! У вас 15 бесплатных запросов для диалога с IZI и '
-                f'5 запросов для генерации изображений.',
+                'Спасибо за подписку на наш канал! У вас 30 бесплатных запросов диалогах с Izi и '
+                '10 запросов на генерацию изображений 🫶🏻'
+                'По исчерпании этого пакета, ежедневного бесплатно предоставляются 10 запросов для диалогов и '
+                '5 запросов на генерацию изображений.',
+                reply_markup=menu_keyboard)
+        elif flag == 1:
+            await call.message.answer(
+                f'Спасибо за подписку на наш канал! Вам доступно на данный момент бесплатно {request} запросов для '
+                f'диалога и {request_img} запросов для генерации изображений 🫶🏻',
                 reply_markup=menu_keyboard)
         else:
             await call.message.answer(
-                f'Спасибо за подписку на наш канал! У вас {request} бесплатных запросов для диалога с IZI и '
-                f'{request_img} запросов для генерации изображений.',
+                f'Спасибо что вы с нами! У вас действует подписка, вся информация есть в вашем профиле 😉',
                 reply_markup=menu_keyboard)
     else:
-        await call.answer('Для начала подпишись на наш новостной канал')
+        await call.message.answer('Для начала подпишись на наш новостной канал', reply_markup=inline_markup_reg)
+        await bot.edit_message_reply_markup(reply_markup=None)
 
 
 # ======================================================================================================================
@@ -224,7 +231,7 @@ async def bot_dialog(call: types.CallbackQuery):
 async def send_image(message):
     api_key = await get_unused_key()
     print(api_key)
-    response = await openai.Image.create(
+    response = openai.Image.create(
         api_key=api_key,
         prompt=message.text,
         n=1,
@@ -270,30 +277,33 @@ async def echo(message: types.Message):
             if state_ai == 'delle2':
                 if request_img != 0:
                     # Отправляем анимацию перед запросом к OpenAI GPT
-                    processing_message = await message.answer(random.choice(options))
+                    message_animation = await message.answer(random.choice(options))
+
                     await send_image(message)
-                    await update_requests(user_id, request + 1, request_img)
+
+                    await update_requests(user_id, request, request_img - 1) if request_img > 0 else None
+
                     # Удаляем сообщение с анимацией перед отправкой ответа
-                    await bot.delete_message(chat_id=processing_message.chat.id,
-                                             message_id=processing_message.message_id)
+                    await bot.delete_message(chat_id=message_animation.chat.id,
+                                             message_id=message_animation.message_id)
                 else:
                     await message.answer(
-                        'Бесплатный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',
+                        'Суточный лимит для генерации изображений исчерпан.',
                         reply_markup=inline_submit_preview)
             elif state_ai == 'kandinsky':
                 if request_img != 0:
                     # Отправляем анимацию перед запросом к OpenAI GPT
-                    await message.answer(random.choice(options))
+                    message_animation = await message.answer(random.choice(options))
 
                     await send_image_kandinsky(message, message.text, message.message_id)
 
-                    await update_requests(user_id, request + 1, request_img)
+                    await update_requests(user_id, request, request_img - 1) if request_img > 0 else None
                     # Удаляем сообщение с анимацией перед отправкой ответа
-                    await bot.delete_message(chat_id=message.chat.id,
-                                             message_id=message.message_id)
+                    await bot.delete_message(chat_id=message_animation.chat.id,
+                                             message_id=message_animation.message_id)
                 else:
                     await message.answer(
-                        'Бесплатный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',
+                        'Суточный лимит для генерации изображений исчерпан.',
                         reply_markup=inline_submit_preview)
             elif flag > 0 and request != 0:
                 user_question = message.text

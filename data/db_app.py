@@ -142,8 +142,8 @@ async def get_flag_and_req(user_id):
             cursor = await db.execute('''
                                         SELECT flag, request, request_img FROM users WHERE user_id = ?
                                         ''', (user_id,))
-            flag = await cursor.fetchone()
-            return flag
+            result = await cursor.fetchone()
+            return result
     except Exception as e:
         print(f"Получить флаг из БД не получилось: {e}")
         return None
@@ -202,8 +202,6 @@ async def add_response_to_history(user_id, response_history):
 async def update_requests(user_id, request, request_img):
     try:
         async with aiosqlite.connect('Users.db') as db:
-            request = request - 1
-            request_img = request_img - 1
             await db.execute('''
                                 UPDATE users
                                 SET request = ?,
