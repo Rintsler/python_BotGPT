@@ -44,18 +44,18 @@ async def submit(call: types.CallbackQuery):
 
     if flag == 2:
         await bot.edit_message_text(
-            'У вас еще действует тариф',
+            'У вас еще действует тариф, вся информация в вашем профиле',
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             reply_markup=inline_submit_preview
         )
     elif flag == 3:
         await call.answer(
-            'Заглушка - флаг 4',
+            'У вас еще действует тариф, вся информация в вашем профиле',
             reply_markup=menu_keyboard)
     elif flag == 4:
         await call.answer(
-            'Заглушка - флаг 5',
+            'У вас еще действует тариф, вся информация в вашем профиле',
             reply_markup=menu_keyboard)
     else:
         subscribe_text = await Subscribe()
@@ -194,7 +194,6 @@ async def check_sub(call: types.CallbackQuery):
                 reply_markup=menu_keyboard)
     else:
         await call.message.answer('Для начала подпишись на наш новостной канал', reply_markup=inline_markup_reg)
-        await bot.edit_message_reply_markup(reply_markup=None)
 
 
 # ======================================================================================================================

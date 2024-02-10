@@ -53,7 +53,6 @@ async def process_pre_checkout_query(pre_checkout_query: types.PreCheckoutQuery)
 @router.message(F.successful_payment)
 async def successful_pay(message: types.Message):
     user_id = message.from_user.id
-    # sub_date = datetime.now().strftime("%Y-%m-%d %H:%M")
     sub_date = datetime.now().strftime('%Y-%m-%d %H:%M')
     if Metadata.subscription == 'Light':
         request = 35

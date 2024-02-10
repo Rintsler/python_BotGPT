@@ -2,9 +2,8 @@ import asyncio
 import logging
 import sys
 from data.config import dp
-from data.db_app import create_info_key_table, create_table
+from data.db_app import create_info_key_table, create_table, scheduler
 from nav.handlers import *
-from app.moduls import scheduler
 
 
 async def main():

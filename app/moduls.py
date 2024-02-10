@@ -1,6 +1,8 @@
 import datetime
-import time
+import sqlite3
 import traceback
+
+import aiosqlite
 import openai
 from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
@@ -8,54 +10,47 @@ from data.config import bot, YOOTOKEN
 from data.db_app import get_user_data, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
-import sqlite3
 import asyncio
 from datetime import datetime, timedelta
 
 
-async def update_tariffs_sub():
-    # Подключаемся к базе данных
-    connection = sqlite3.connect('users.db')
-    cursor = connection.cursor()
-
-    # Получаем текущую дату
-    current_date = datetime.now()
-
-    # Выполняем запрос для выборки данных
-    cursor.execute('SELECT id, sub_date, period_sub, flag FROM users WHERE flag > 1')
-
-    rows = cursor.fetchall()
-    print("Проверяю базу")
-    for row in rows:
-        user_id, sub_date, period_sub, flag = row
-
-        # Проверяем, что значение sub_date не является None перед преобразованием
-        if sub_date:
-            # Преобразуем строку в формат datetime с учетом миллисекунд
-            sub_date = datetime.strptime(sub_date, '%Y-%m-%d %H:%M')
-
-            # Проверяем условия для обновления
-            if flag > 1:
-                if period_sub == 1:
-                    if (current_date - sub_date).days > 30:
-                        cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
-                elif period_sub == 6:
-                    if (current_date - sub_date).days > 180:
-                        cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
-                elif period_sub == 12:
-                    if (current_date - sub_date).days > 364:
-                        cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
-
-    # Сохраняем изменения и закрываем соединение
-    print("Обновил подписки")
-    connection.commit()
-    connection.close()
-
-
-async def scheduler():
-    while True:
-        await update_tariffs_sub()
-        await asyncio.sleep(86400)
+# async def update_tariffs_sub():
+#     # Подключаемся к базе данных
+#     connection = sqlite3.connect('users.db')
+#     cursor = connection.cursor()
+#
+#     # Получаем текущую дату
+#     current_date = datetime.now()
+#
+#     # Выполняем запрос для выборки данных
+#     cursor.execute('SELECT id, sub_date, period_sub, flag FROM users WHERE flag > 1')
+#
+#     rows = cursor.fetchall()
+#     print("Проверяю базу")
+#     for row in rows:
+#         user_id, sub_date, period_sub, flag = row
+#
+#         # Проверяем, что значение sub_date не является None перед преобразованием
+#         if sub_date:
+#             # Преобразуем строку в формат datetime с учетом миллисекунд
+#             sub_date = datetime.strptime(sub_date, '%Y-%m-%d %H:%M')
+#
+#             # Проверяем условия для обновления
+#             if flag > 1:
+#                 if period_sub == 1:
+#                     if (current_date - sub_date).days > 30:
+#                         cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
+#                 elif period_sub == 6:
+#                     if (current_date - sub_date).days > 180:
+#                         cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
+#                 elif period_sub == 12:
+#                     if (current_date - sub_date).days > 364:
+#                         cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
+#
+#     # Сохраняем изменения и закрываем соединение
+#     print("Обновил подписки")
+#     connection.commit()
+#     connection.close()
 
 
 async def calculate_remaining_days(sub_date, flag):
@@ -153,6 +148,8 @@ async def profile(user_id):
                  period_sub, sub_date, remaining_days]
     if sub_date:
         remaining_days = await calculate_remaining_days(sub_date, flag)
+    else:
+        remaining_days = ''
 
     for i in user_info:
         if i is None:
@@ -161,7 +158,7 @@ async def profile(user_id):
         subscribe = "Базовый"
     elif flag == 3:
         subscribe = "Расширенный"
-    elif flag == 5:
+    elif flag == 4:
         subscribe = "Премиум"
 
     if period_sub == 1:
@@ -174,10 +171,12 @@ async def profile(user_id):
     profile_text = (
         "📊 Ваш профиль\n\n"
         f"👤 Ваш ID: {user_id}\n\n"
-        f"✅ Тариф: {subscribe}\n\n"
-        f"📕 Период действия: {period}\n\n"
-        f"⏳ Дата регистрации: {registration_date}\n\n"
-        f"🗓 Осталось дней подписки: {remaining_days}\n"
+        f"🗓 Дата регистрации: {registration_date}\n\n\n"
+        f"💼 Тариф: {subscribe}\n\n"
+        f"⏳ Период действия: {period}\n\n"
+        f"📝 Запросы - диалог: {request}\n\n"
+        f"🏞 Запросы - изображения: {request_img}\n\n"
+        f"⏲ Осталось дней подписки: {remaining_days}\n"
     )
     return profile_text
 
@@ -210,7 +209,7 @@ async def counting_pay(factor, user_id):
         provider_token=YOOTOKEN,
         currency='RUB',
         prices=[LabeledPrice(label='Тариф ' + Metadata.subscription, amount=sub_sum)],
-        max_tip_amount=1000000000,
+        max_tip_amount=500000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
         start_parameter='Izi_bot',
         provider_data=None,
