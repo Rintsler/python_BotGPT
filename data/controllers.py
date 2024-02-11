@@ -80,15 +80,15 @@ async def Light(call: types.CallbackQuery):
                                 reply_markup=InlineKeyboardMarkup(
                                     inline_keyboard=[
                                         [
-                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}',
+                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1} р.',
                                                                  callback_data='month')
                                         ],
                                         [
-                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}',
+                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2} р.',
                                                                  callback_data='month_6')
                                         ],
                                         [
-                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}',
+                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3} р.',
                                                                  callback_data='year')
                                         ],
                                         [
@@ -112,15 +112,15 @@ async def Middle(call: types.CallbackQuery):
                                 reply_markup=InlineKeyboardMarkup(
                                     inline_keyboard=[
                                         [
-                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}',
+                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1} р.',
                                                                  callback_data='month')
                                         ],
                                         [
-                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}',
+                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2} р.',
                                                                  callback_data='month_6')
                                         ],
                                         [
-                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}',
+                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3} р.',
                                                                  callback_data='year')
                                         ],
                                         [
@@ -143,15 +143,15 @@ async def Full(call: types.CallbackQuery):
                                 reply_markup=InlineKeyboardMarkup(
                                     inline_keyboard=[
                                         [
-                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}',
+                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1} р.',
                                                                  callback_data='month')
                                         ],
                                         [
-                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}',
+                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2} р.',
                                                                  callback_data='month_6')
                                         ],
                                         [
-                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}',
+                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3} р.',
                                                                  callback_data='year')
                                         ],
                                         [
