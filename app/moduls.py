@@ -199,6 +199,12 @@ async def Subscribe():
     return subscribe_text
 
 
+async def calc_sum(sub_sum):
+    Metadata.sub_sum1 = sub_sum * 1
+    Metadata.sub_sum2 = sub_sum * 5
+    Metadata.sub_sum3 = sub_sum * 10
+
+
 async def counting_pay(factor, user_id):
     sub_sum = Metadata.sub_sum * factor
     await bot.send_invoice(

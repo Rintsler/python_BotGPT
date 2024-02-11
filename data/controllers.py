@@ -3,16 +3,16 @@ import json
 import random
 import openai
 from aiogram import types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.modul_Kandinsky import send_image_kandinsky
-from app.moduls import generate_response, profile, counting_pay, Subscribe
+from app.moduls import generate_response, profile, counting_pay, Subscribe, calc_sum
 from app.update_keys import get_unused_key
 from data.config import bot, chat_id
 from data.db_app import reg_user, new_chat, get_user_history, update_user_history, \
     add_response_to_history, set_state_ai, get_state_ai, get_flag_and_req, add_user, update_requests
 from data.metadata import Metadata
-from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai, \
-    inline_submit_period
+from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai
 
 options = [
     "🤔 Осторожно, работает умная машина...",
@@ -69,38 +69,98 @@ async def submit(call: types.CallbackQuery):
 #                               Выбор тарифа
 # ======================================================================================================================
 async def Light(call: types.CallbackQuery):
+    Metadata.sub_sum = 10000
+    await calc_sum(100)
+    Metadata.subscription = 'Light'
     await bot.edit_message_text('📝 Диалог с Izi - 35 запросов в сутки\n'
                                 '🖼️ Генерация изображений - 15 запросов в сутки\n'
                                 'На какой период хотите подключить тариф - Базовый?',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
-                                reply_markup=inline_submit_period
+                                reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}',
+                                                                 callback_data='month')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}',
+                                                                 callback_data='month_6')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}',
+                                                                 callback_data='year')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="← назад", callback_data='back_to_subscriptions')
+                                        ]
+                                    ],
+                                    resize_keyboard=True
                                 )
-    Metadata.sub_sum = 10000
-    Metadata.subscription = 'Light'
+                                )
 
 
 async def Middle(call: types.CallbackQuery):
+    Metadata.sub_sum = 25000
+    await calc_sum(250)
+    Metadata.subscription = 'Middle'
     await bot.edit_message_text('📝 Диалог с Izi - без ограничений 😺\n'
                                 '🖼️ Генерация изображений - 40 запросов в сутки\n'
                                 'На какой период хотите подключить тариф - Расширенный?',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
-                                reply_markup=inline_submit_period
+                                reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}',
+                                                                 callback_data='month')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}',
+                                                                 callback_data='month_6')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}',
+                                                                 callback_data='year')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="← назад", callback_data='back_to_subscriptions')
+                                        ]
+                                    ],
+                                    resize_keyboard=True
                                 )
-    Metadata.sub_sum = 25000
-    Metadata.subscription = 'Middle'
+                                )
 
 
 async def Full(call: types.CallbackQuery):
+    Metadata.sub_sum = 45000
+    await calc_sum(450)
+    Metadata.subscription = 'Premium'
     await bot.edit_message_text('♾️ Полный безлимит на запросы к Izi 🤩\n'
                                 'На какой период хотите подключить тариф - Премиум?',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
-                                reply_markup=inline_submit_period
+                                reply_markup=InlineKeyboardMarkup(
+                                    inline_keyboard=[
+                                        [
+                                            InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}',
+                                                                 callback_data='month')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}',
+                                                                 callback_data='month_6')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}',
+                                                                 callback_data='year')
+                                        ],
+                                        [
+                                            InlineKeyboardButton(text="← назад", callback_data='back_to_subscriptions')
+                                        ]
+                                    ],
+                                    resize_keyboard=True
                                 )
-    Metadata.sub_sum = 45000
-    Metadata.subscription = 'Premium'
+                                )
 
 
 # ======================================================================================================================

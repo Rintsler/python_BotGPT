@@ -1,5 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
+from data.metadata import Metadata
+
 # ======================================================================================================================
 # InLine Buttons основное меню
 # ======================================================================================================================
@@ -76,24 +78,24 @@ inline_submit_preview = InlineKeyboardMarkup(
 # InLine Buttons в меню подписки - период
 # ======================================================================================================================
 
-inline_submit_period = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            # InlineKeyboardButton(text="Оформить подписку", callback_data='submit_up')
-            InlineKeyboardButton(text="Месяц", callback_data='month')
-        ],
-        [
-            InlineKeyboardButton(text="6 месяцев", callback_data='month_6')
-        ],
-        [
-            InlineKeyboardButton(text="Год", callback_data='year')
-        ],
-        [
-            InlineKeyboardButton(text="← назад", callback_data='back_to_subscriptions')
-        ]
-    ],
-    resize_keyboard=True
-)
+# inline_submit_period = InlineKeyboardMarkup(
+#     inline_keyboard=[
+#         [
+#             # InlineKeyboardButton(text="Оформить подписку", callback_data='submit_up')
+#             InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}', callback_data='month')
+#         ],
+#         [
+#             InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}', callback_data='month_6')
+#         ],
+#         [
+#             InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}', callback_data='year')
+#         ],
+#         [
+#             InlineKeyboardButton(text="← назад", callback_data='back_to_subscriptions')
+#         ]
+#     ],
+#     resize_keyboard=True
+# )
 # ======================================================================================================================
 # InLine Buttons Оплата
 # ======================================================================================================================
