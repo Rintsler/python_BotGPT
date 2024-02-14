@@ -94,7 +94,8 @@ async def generate_response(user_id, chat_history, message, request, request_img
         )
         otvet = response['choices'][0]['message']['content'].strip()
         print("Обновляем столбцы request, request_img в базе данных")
-        await update_requests(user_id, request - 1, request_img)
+        if request > 0:
+            await update_requests(user_id, request - 1, request_img)
         await reset_key_status(api_key)
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
@@ -207,6 +208,13 @@ async def calc_sum(sub_sum):
 
 async def counting_pay(factor, user_id):
     sub_sum = Metadata.sub_sum * factor
+    description = ''
+    if Metadata.subscription == 'Light':
+        description = Metadata.description_Light
+    elif Metadata.subscription == 'Middle':
+        description = Metadata.description_Middle
+    elif Metadata.subscription == 'Premium':
+        description = Metadata.description_Premium
     await bot.send_invoice(
         chat_id=user_id,
         title='Квитанция к оплате',
@@ -214,7 +222,7 @@ async def counting_pay(factor, user_id):
         payload='month_sub',
         provider_token=YOOTOKEN,
         currency='RUB',
-        prices=[LabeledPrice(label='Тариф ' + Metadata.subscription, amount=sub_sum)],
+        prices=[LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=sub_sum)],
         max_tip_amount=500000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
         start_parameter='Izi_bot',

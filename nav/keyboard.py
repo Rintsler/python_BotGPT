@@ -74,28 +74,7 @@ inline_submit_preview = InlineKeyboardMarkup(
     ],
     resize_keyboard=True
 )
-# ======================================================================================================================
-# InLine Buttons в меню подписки - период
-# ======================================================================================================================
 
-# inline_submit_period = InlineKeyboardMarkup(
-#     inline_keyboard=[
-#         [
-#             # InlineKeyboardButton(text="Оформить подписку", callback_data='submit_up')
-#             InlineKeyboardButton(text=f'Месяц - {Metadata.sub_sum1}', callback_data='month')
-#         ],
-#         [
-#             InlineKeyboardButton(text=f'6 месяцев - {Metadata.sub_sum2}', callback_data='month_6')
-#         ],
-#         [
-#             InlineKeyboardButton(text=f'Год - {Metadata.sub_sum3}', callback_data='year')
-#         ],
-#         [
-#             InlineKeyboardButton(text="← назад", callback_data='back_to_subscriptions')
-#         ]
-#     ],
-#     resize_keyboard=True
-# )
 # ======================================================================================================================
 # InLine Buttons Оплата
 # ======================================================================================================================
@@ -105,7 +84,8 @@ inline_kb_pay = InlineKeyboardMarkup(
             InlineKeyboardButton(text="💳 Оплатить", pay=True),
             InlineKeyboardButton(text="✖️ Отмена", callback_data='cancel_payment')
         ]
-    ]
+    ],
+    resize_keyboard=True
 )
 # ======================================================================================================================
 # InLine Buttons назад в Профиль

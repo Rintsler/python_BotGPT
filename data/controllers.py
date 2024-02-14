@@ -1,10 +1,8 @@
-import asyncio
 import json
 import random
 import openai
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 from app.modul_Kandinsky import send_image_kandinsky
 from app.moduls import generate_response, profile, counting_pay, Subscribe, calc_sum
 from app.update_keys import get_unused_key
@@ -226,6 +224,7 @@ async def back_to_profile(call: types.CallbackQuery):
 # ======================================================================================================================
 async def check_sub(call: types.CallbackQuery):
     user_id = call.from_user.id
+    await bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
     member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
     print('Проверка на членство в канале: ', member)
     if member.status != 'left':
@@ -340,7 +339,8 @@ async def echo(message: types.Message):
 
                     await send_image(message)
 
-                    await update_requests(user_id, request, request_img - 1) if request_img > 0 else None
+                    if request_img > 0:
+                        await update_requests(user_id, request, request_img - 1)
 
                     # Удаляем сообщение с анимацией перед отправкой ответа
                     await bot.delete_message(chat_id=message_animation.chat.id,
@@ -354,9 +354,11 @@ async def echo(message: types.Message):
                     # Отправляем анимацию перед запросом к OpenAI GPT
                     message_animation = await message.answer(random.choice(options))
 
-                    await send_image_kandinsky(message, message.text, message.message_id)
+                    await send_image_kandinsky(message, message.text)
 
-                    await update_requests(user_id, request, request_img - 1) if request_img > 0 else None
+                    if request_img > 0:
+                        await update_requests(user_id, request, request_img - 1)
+
                     # Удаляем сообщение с анимацией перед отправкой ответа
                     await bot.delete_message(chat_id=message_animation.chat.id,
                                              message_id=message_animation.message_id)

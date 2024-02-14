@@ -35,12 +35,6 @@ router.callback_query.register(back_to_profile, F.data == 'back_to_profile')
 router.callback_query.register(back_to_subscriptions, F.data == 'back_to_subscriptions')
 router.callback_query.register(cancel_payment, F.data == 'cancel_payment')
 
-# router.callback_query.register(order_gen, F.data == 'gen_text')
-# router.callback_query.register(order_gen, F.data == 'gen_post')
-# router.callback_query.register(order_gen, F.data == 'gen_img')
-# router.callback_query.register(order_itog, F.data == 'itog')
-
-
 # ======================================================================================================================
 #                                            УСПЕШНАЯ ОПЛАТА
 # ======================================================================================================================

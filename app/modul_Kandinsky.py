@@ -1,12 +1,9 @@
 import asyncio
 import json
-import time
 import base64
 import requests
 from aiogram import types
 from aiogram.types import FSInputFile
-
-from data.config import bot
 
 
 class Text2ImageAPI:
@@ -55,7 +52,7 @@ class Text2ImageAPI:
             await asyncio.sleep(delay)
 
 
-async def send_image_kandinsky(message: types.Message, text, chat_id):
+async def send_image_kandinsky(message: types.Message, text):
     api = Text2ImageAPI('https://api-key.fusionbrain.ai/', '81BECD65C781605F64967084F161012B',
                         'A6B1748E5079BFE4B1F9CBC6A3EB4F50')
     model_id = await api.get_model()
@@ -67,10 +64,10 @@ async def send_image_kandinsky(message: types.Message, text, chat_id):
 
     image_data = base64.b64decode(image_base64)
 
-    with open(f"{message.from_user.id}.jpg", "wb") as file:
+    with open(f"image_Kandinsky/{message.from_user.id}.jpg", "wb") as file:
         file.write(image_data)
 
-    photo = FSInputFile(f"{message.from_user.id}.jpg")
+    photo = FSInputFile(f"image_Kandinsky/{message.from_user.id}.jpg")
     # Отправляем изображение в сообщении
     await message.answer_photo(photo, caption="Нейросеть: Kandinsky")
 
