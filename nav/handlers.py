@@ -35,6 +35,7 @@ router.callback_query.register(back_to_profile, F.data == 'back_to_profile')
 router.callback_query.register(back_to_subscriptions, F.data == 'back_to_subscriptions')
 router.callback_query.register(cancel_payment, F.data == 'cancel_payment')
 
+
 # ======================================================================================================================
 #                                            УСПЕШНАЯ ОПЛАТА
 # ======================================================================================================================
@@ -47,21 +48,40 @@ async def process_pre_checkout_query(pre_checkout_query: types.PreCheckoutQuery)
 @router.message(F.successful_payment)
 async def successful_pay(message: types.Message):
     user_id = message.from_user.id
-    sub_date = datetime.now().strftime('%Y-%m-%d %H:%M')
+    sub_date = datetime.now().date()
+    sub_date_end = ''
+
+    # Увеличить sub_date на месяц
+    if Metadata.sub_period == 1:
+        sub_date_end = sub_date.replace(month=(sub_date.month + 1) % 12)
+
+    # Увеличить sub_date на пол года
+    elif Metadata.sub_period == 6:
+        if sub_date.month + 6 <= 12:
+            sub_date_end = sub_date.replace(month=sub_date.month + 6)
+        else:
+            sub_date_end = sub_date.replace(year=sub_date.year + 1, month=(sub_date.month + 6) % 12,
+                                            day=sub_date.day)
+    # Увеличить sub_date на один год
+    elif Metadata.sub_period == 12:
+        sub_date_end = sub_date.replace(year=sub_date.year + 1)
+
+    sub_date = datetime.strftime(sub_date, '%d.%m.%Y')
+    sub_date_end = datetime.strftime(sub_date_end, '%d.%m.%Y')
     if Metadata.subscription == 'Light':
         request = 35
         request_img = 15
-        await update_subscribe(2, sub_date, request, request_img, Metadata.sub_period, user_id)
+        await update_subscribe(2, sub_date, sub_date_end, request, request_img, Metadata.sub_period, user_id)
     elif Metadata.subscription == 'Middle':
         request = -1
         request_img = 40
-        await update_subscribe(3, sub_date, request, request_img, Metadata.sub_period, user_id)
+        await update_subscribe(3, sub_date, sub_date_end, request, request_img, Metadata.sub_period, user_id)
     elif Metadata.subscription == 'Premium':
         request = -1
         request_img = -1
-        await update_subscribe(4, sub_date, request, request_img, Metadata.sub_period, user_id)
+        await update_subscribe(4, sub_date, sub_date_end, request, request_img, Metadata.sub_period, user_id)
 
-    response_text = f'Вы подключили тариф {Metadata.subscription}. Спасибо!'
+    response_text = f'Вы подключили тариф {Metadata.subscription}, он будет действовать до {sub_date_end}. Спасибо!'
     await message.answer(response_text, reply_markup=menu_keyboard)
 
 

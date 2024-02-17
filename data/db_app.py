@@ -2,8 +2,7 @@ import asyncio
 import json
 import traceback
 import aiosqlite
-from datetime import datetime
-
+from datetime import datetime, timedelta
 from data.config import bot
 
 
@@ -24,6 +23,7 @@ async def create_table():
                 request_img INTEGER,
                 period_sub INTEGER,
                 sub_date DATETIME,
+                sub_date_end DATETIME,
                 remaining_days INTEGER
             )
         ''')
@@ -60,74 +60,47 @@ async def update_tariffs_sub():
         cursor = await connection.cursor()
 
         # Получаем текущую дату
-        current_date = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M')
+        current_date = datetime.now().strftime('%d.%m.%Y')
+
+        print('Сегодня: ', current_date)
 
         # Выполняем запрос для выборки данных
-        await cursor.execute('SELECT user_id, period_sub, sub_date FROM users WHERE flag > 2')
+        await cursor.execute('SELECT user_id, sub_date, sub_date_end FROM users WHERE flag > 1')
 
         rows = await cursor.fetchall()
-        print(rows)
+        print('Были извлечены данные для проверки срока действия тарифов:\n', rows)
+        print("=============================================Проверяю базу=============================================")
 
-        print("Проверяю базу")
         for row in rows:
-            user_id, period_sub, sub_date = row
+            user_id, sub_date, sub_date_end = row
             # Проверяем, что значение sub_date не является None перед преобразованием
             if sub_date:
-                sub_date = datetime.strptime(sub_date, '%Y-%m-%d %H:%M')
-                # Увеличить sub_date на один месяц
-                sub_date_month = sub_date.replace(month=(sub_date.month + 1) % 12 + 1)
-                date_send_m_month = sub_date_month.replace(day=sub_date_month.day - 4)
+                # Преобразуем строку в объект datetime
+                sub_date_end = datetime.strptime(sub_date_end, '%d.%m.%Y')
 
-                sub_date_month = datetime.strftime(sub_date_month, '%Y-%m-%d')
-                date_send_m_month = datetime.strftime(date_send_m_month, '%Y-%m-%d')
-
-                # Увеличить sub_date на пол года
-                if sub_date.month + 6 <= 12:
-                    sub_date_6m = sub_date.replace(month=sub_date.month + 6)
-                else:
-                    sub_date_6m = sub_date.replace(year=sub_date.year + 1, month=(sub_date.month + 6) % 12,
-                                                   day=sub_date.day)
-                date_send_m_6m = sub_date_6m.replace(day=sub_date_6m.day - 4)
-
-                sub_date_6m = datetime.strftime(sub_date_6m, '%Y-%m-%d')
-                date_send_m_6m = datetime.strftime(date_send_m_6m, '%Y-%m-%d')
-
-                # Увеличить sub_date на один год
-                sub_date_year = sub_date.replace(year=sub_date.year + 1)
-                date_send_m_year = sub_date_year.replace(day=sub_date_year.day - 4)
-
-                sub_date_year = datetime.strftime(sub_date_year, '%Y-%m-%d')
-                date_send_m_year = datetime.strftime(date_send_m_year, '%Y-%m-%d')
+                # Вычитаем 4 дня
+                date_send_m_month = sub_date_end - timedelta(days=4)
+                date_send_m_month_str = date_send_m_month.strftime('%d.%m.%Y')
 
                 # Проверяем условия для обновления
-                if period_sub == 1:
-                    if current_date >= sub_date_month:
-                        await cursor.execute('UPDATE users SET flag = 2, sub_date = ? WHERE user_id = ?',
-                                             ('', user_id))
-                    elif current_date > date_send_m_month:
+                if datetime.now() >= sub_date_end:
+                    await cursor.execute('''UPDATE users 
+                                            SET flag = 1, sub_date = ?, sub_date_end = ?, request = 15, request_img = 5 
+                                            WHERE user_id = ?''',
+                                         ('', '', user_id))
+                    sub_date_end = datetime.strftime(sub_date_end, '%d.%m.%Y')
+                    print(sub_date_end)
+                    if current_date == sub_date_end:
                         await bot.send_message(chat_id=user_id,
-                                               text=f'Действие вашего тарифа заканчивается {sub_date_month} 😱')
-                elif period_sub == 6:
-                    print("дата", sub_date_6m)
-                    if current_date >= sub_date_6m:
-                        await cursor.execute('UPDATE users SET flag = 2, sub_date = ? WHERE user_id = ?',
-                                             ('', user_id))
-                    elif current_date > date_send_m_6m:
-                        await bot.send_message(chat_id=user_id,
-                                               text=f'Действие вашего тарифа заканчивается {sub_date_6m} 😱')
-                elif period_sub == 12:
-                    print(period_sub)
-                    print(current_date, '==', sub_date_year)
-                    if current_date >= sub_date_year:
-                        await cursor.execute('UPDATE users SET flag = 2, sub_date = ? WHERE user_id = ?',
-                                             ('', user_id))
-                    elif current_date > date_send_m_year:
-                        await bot.send_message(chat_id=user_id,
-                                               text=f'Действие вашего тарифа заканчивается {sub_date_year} 😱')
+                                               text=f'У вас истек срок действия тарифа')
+                elif current_date > date_send_m_month_str:
+                    sub_date_end = datetime.strftime(sub_date_end, '%d.%m.%Y')
+                    await bot.send_message(chat_id=user_id,
+                                           text=f'Действие вашего тарифа заканчивается {sub_date_end} 😱')
 
         # Сохраняем изменения и закрываем соединение
         await connection.commit()
-    print("Обновил подписки")
+    print("!!!!!!!!!!!!!!!!!!  Действие тарифов проверено  !!!!!!!!!!!!!!!!!!")
 
 
 async def update_requests_db():
@@ -137,8 +110,9 @@ async def update_requests_db():
 
         await cursor.execute('SELECT user_id , request_img, request FROM users WHERE flag == 1')
         rows = await cursor.fetchall()
+        print('Были извлечены данные для проверки суточного лимита:\n', rows)
 
-        print("Проверяю базу")
+        print("///////////////////////////////  Проверяю базу  ///////////////////////////////")
         for row in rows:
             user_id, request_img, request = row
             if request < 15:
@@ -148,14 +122,19 @@ async def update_requests_db():
 
         # Сохраняем изменения и закрываем соединение
         await connection.commit()
-    print("Обновил лимиты")
+    print("!!!!!!!!!!!!!!!!!!  Суточные лимиты обновлены  !!!!!!!!!!!!!!!!!!")
 
 
 async def scheduler():
     while True:
-        await update_tariffs_sub()
-        await update_requests_db()
-        await asyncio.sleep(86400)
+        current_time = datetime.now().strftime('%H:%M')
+        if current_time == '04:00':
+            await update_tariffs_sub()
+            await asyncio.sleep(30)
+            await update_requests_db()
+            await asyncio.sleep(82800)
+        else:
+            await asyncio.sleep(30)
 
 
 async def set_state_ai(user_id, state_ai):
@@ -187,15 +166,15 @@ async def get_state_ai(user_id):
 
 
 # Добавление нового пользователя в базу данных
-async def reg_user(user_id, username, registration_date, request, request_img, flag):
+async def reg_user(user_id, registration_date, request, request_img, flag):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
                                 UPDATE users 
-                                SET user_id = ?, username = ?, registration_date = ?, 
+                                SET registration_date = ?, 
                                 request = ?, request_img = ?, flag = ?
                                 WHERE user_id = ?
-                            ''', (user_id, username, registration_date, request, request_img, flag, user_id))
+                            ''', (registration_date, request, request_img, flag, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error reg user: {e}")
@@ -242,18 +221,19 @@ async def add_user(user_id, username):
 
 
 # Обновление данных пользователя в базе данных
-async def update_subscribe(flag, sub_date, request, request_img, period, user_id):
+async def update_subscribe(flag, sub_date, sub_date_end, request, request_img, period, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             await db.execute('''
                                 UPDATE users
                                 SET flag = ?,
                                 sub_date = ?,
+                                sub_date_end = ?,
                                 request = ?, 
                                 request_img = ?,
                                 period_sub = ?
                                 WHERE user_id = ?
-                            ''', (flag, sub_date, request, request_img, period, user_id))
+                            ''', (flag, sub_date, sub_date_end, request, request_img, period, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error updating user: {e}")

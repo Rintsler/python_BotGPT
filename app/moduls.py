@@ -1,8 +1,5 @@
 import datetime
-import sqlite3
 import traceback
-
-import aiosqlite
 import openai
 from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
@@ -53,20 +50,16 @@ from datetime import datetime, timedelta
 #     connection.close()
 
 
-async def calculate_remaining_days(sub_date, flag):
+async def calculate_remaining_days(sub_date_end):
     try:
-        db_datetime = datetime.strptime(sub_date, "%Y-%m-%d %H:%M")
+        sub_date_end = datetime.strptime(sub_date_end, '%d.%m.%Y')
         current_date = datetime.now()
+
         # Рассчитываем разницу в днях
-        if flag == 2:
-            remaining_days = (db_datetime + timedelta(days=30)) - current_date
-            return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
-        if flag == 3:
-            remaining_days = (db_datetime + timedelta(days=180)) - current_date
-            return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
-        if flag == 4:
-            remaining_days = (db_datetime + timedelta(days=365)) - current_date
-            return max(remaining_days.days, 0)  # Возвращаем оставшееся количество дней, но не меньше 0
+        difference = sub_date_end - current_date
+
+        # Получаем количество дней в разнице
+        return difference.days
     except ValueError as e:
         print(f"Ошибка при преобразовании даты: {e}")
         return None
@@ -142,13 +135,13 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message, reque
 
 
 async def profile(user_id):
-    subscribe = period = ''
+    subscribe = ''
     pk, state_ai, user_id, flag, username, registration_date, chat_history, response_history, request, request_img, \
-        period_sub, sub_date, remaining_days = await get_user_data(user_id)
+        period_sub, sub_date, sub_date_end, remaining_days = await get_user_data(user_id)
     user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, request, request_img,
-                 period_sub, sub_date, remaining_days]
-    if sub_date:
-        remaining_days = await calculate_remaining_days(sub_date, flag)
+                 period_sub, sub_date, sub_date_end, remaining_days]
+    if sub_date_end is not None:
+        remaining_days = await calculate_remaining_days(sub_date_end)
     else:
         remaining_days = ''
 
@@ -162,19 +155,12 @@ async def profile(user_id):
     elif flag == 4:
         subscribe = "Премиум"
 
-    if period_sub == 1:
-        period = "Месяц"
-    elif period_sub == 6:
-        period = "6 месяцев"
-    elif period_sub == 12:
-        period = "Год"
-
     profile_text = (
         "📊 Ваш профиль\n\n"
         f"👤 Ваш ID: {user_id}\n\n"
         f"🗓 Дата регистрации: {registration_date}\n\n\n"
         f"💼 Тариф: {subscribe}\n\n"
-        f"⏳ Период действия: {period}\n\n"
+        f"⏳ Период действия: {sub_date} - {sub_date_end}\n\n"
         f"📝 Запросы - диалог: {request}\n\n"
         f"🏞 Запросы - изображения: {request_img}\n\n"
         f"⏲ Осталось дней подписки: {remaining_days}\n"
@@ -223,7 +209,7 @@ async def counting_pay(factor, user_id):
         provider_token=YOOTOKEN,
         currency='RUB',
         prices=[LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=sub_sum)],
-        max_tip_amount=500000,
+        max_tip_amount=10000000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
         start_parameter='Izi_bot',
         provider_data=None,
