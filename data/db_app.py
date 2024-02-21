@@ -24,7 +24,9 @@ async def create_table():
                 period_sub INTEGER,
                 sub_date DATETIME,
                 sub_date_end DATETIME,
-                remaining_days INTEGER
+                remaining_days INTEGER,
+                payload INTEGER,
+                friends INTEGER
             )
         ''')
 
@@ -60,7 +62,7 @@ async def update_tariffs_sub():
         cursor = await connection.cursor()
 
         # Получаем текущую дату
-        current_date = datetime.now().strftime('%d.%m.%Y')
+        current_date = datetime.now()
 
         print('Сегодня: ', current_date)
 
@@ -73,28 +75,24 @@ async def update_tariffs_sub():
 
         for row in rows:
             user_id, sub_date, sub_date_end = row
+
             # Проверяем, что значение sub_date не является None перед преобразованием
             if sub_date:
-                # Преобразуем строку в объект datetime
-                sub_date_end = datetime.strptime(sub_date_end, '%d.%m.%Y')
+                # Преобразовываем sub_date_end в объект datetime
+                sub_date_end_datetime = datetime.strptime(sub_date_end, "%d.%m.%Y")
 
-                # Вычитаем 4 дня
-                date_send_m_month = sub_date_end - timedelta(days=4)
-                date_send_m_month_str = date_send_m_month.strftime('%d.%m.%Y')
+                # Вычитаем 3 дня из sub_date_end
+                date_for_message = sub_date_end_datetime - timedelta(days=3)
 
                 # Проверяем условия для обновления
-                if datetime.now() >= sub_date_end:
+                if current_date >= sub_date_end_datetime:
                     await cursor.execute('''UPDATE users 
                                             SET flag = 1, sub_date = ?, sub_date_end = ?, request = 15, request_img = 5 
                                             WHERE user_id = ?''',
                                          ('', '', user_id))
-                    sub_date_end = datetime.strftime(sub_date_end, '%d.%m.%Y')
-                    print(sub_date_end)
-                    if current_date == sub_date_end:
-                        await bot.send_message(chat_id=user_id,
-                                               text=f'У вас истек срок действия тарифа')
-                elif current_date > date_send_m_month_str:
-                    sub_date_end = datetime.strftime(sub_date_end, '%d.%m.%Y')
+                    await bot.send_message(chat_id=user_id,
+                                           text=f'У вас истек срок действия тарифа')
+                elif current_date >= date_for_message:
                     await bot.send_message(chat_id=user_id,
                                            text=f'Действие вашего тарифа заканчивается {sub_date_end} 😱')
 
@@ -208,14 +206,34 @@ async def update_flag_requests(user_id, flag):
         print(f"Error reg user: {e}")
 
 
-async def add_user(user_id, username):
+async def add_user(user_id, username, payload, update):
     try:
         async with aiosqlite.connect('Users.db') as db:
-            await db.execute('''
-                                INSERT INTO users (user_id, username)
-                                VALUES (?, ?)
-                            ''', (user_id, username))
-            await db.commit()
+            if update:
+                await db.execute('''
+                                    UPDATE users
+                                    SET payload = ?
+                                    WHERE user_id = ?
+                                    ''', (payload, user_id))
+                await db.commit()
+
+                cursor = await db.execute('''
+                                             SELECT payload > 0 FROM users WHERE user_id = ?
+                                             ''', (payload, user_id))
+                result = await cursor.fetchone()
+                if not result:
+                    await db.execute('''
+                                        UPDATE users
+                                        SET friends = friends + ?
+                                        WHERE user_id = ?
+                                        ''', (1, payload))
+                    await db.commit()
+            else:
+                await db.execute('''
+                                    INSERT INTO users (user_id, username, payload)
+                                    VALUES (?, ?, ?)
+                                ''', (user_id, username, payload))
+                await db.commit()
     except Exception as e:
         print(f"Error add user: {e}")
 

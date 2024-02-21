@@ -1,9 +1,12 @@
 import json
 import random
 import openai
-from aiogram import types
+from aiogram import types, Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.payload import decode_payload
+
 from app.modul_Kandinsky import send_image_kandinsky
+from app.modul_Kandinsky2_2 import kandinsky2_2
 from app.moduls import generate_response, profile, counting_pay, Subscribe, calc_sum
 from app.update_keys import get_unused_key
 from data.config import bot, chat_id
@@ -11,6 +14,8 @@ from data.db_app import reg_user, new_chat, get_user_history, update_user_histor
     add_response_to_history, set_state_ai, get_state_ai, get_flag_and_req, add_user, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai
+from aiogram.utils.deep_linking import create_start_link
+from aiogram.filters import CommandObject
 
 options = [
     "🤔 Осторожно, работает умная машина...",
@@ -20,17 +25,37 @@ options = [
 ]
 
 
-async def start_cmd(message: types.Message):
+async def start_cmd(message: types.Message, command: CommandObject):
+    payload = None
     first_name = message.from_user.first_name
     username = message.from_user.username
     user_id = message.from_user.id
     result = await get_flag_and_req(user_id)
+    args = command.args
+    try:
+        payload = decode_payload(args)
+    except Exception as e:
+        print(f"Ошибка при получении информации о пользователе в Start: {e}")
+    if payload:
+        ref_username = await get_username_by_user_id(bot, int(payload))
+        await add_user(user_id, username, payload, True)
+        await message.answer(f'Ваш реферер: \nid:{payload}'
+                             f'\n{ref_username}')
     if not result:
-        await add_user(user_id, username)
+        await add_user(user_id, username, payload, False)
     await message.answer(
         f'Привет, {first_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите "Готово". '
         'Вы получите 30 бесплатных запросов диалогах с Izi и 10 запросов на генерацию изображений.',
         reply_markup=inline_markup_reg)
+
+
+async def get_username_by_user_id(bot: Bot, user_id: int):
+    try:
+        user = await bot.get_chat_member(chat_id=user_id, user_id=user_id)
+        return user.user.username if user.user.username else "Имя пользователя отсутствует"
+    except Exception as e:
+        print(f"Ошибка при получении информации о пользователе: {e}")
+        return None
 
 
 # ======================================================================================================================
@@ -249,6 +274,28 @@ async def check_sub(call: types.CallbackQuery):
 # ======================================================================================================================
 #                               Выбор нейронки
 # ======================================================================================================================
+async def for_kandinsky2_2(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    state_ai = 'kandinsky2_2'
+    await set_state_ai(user_id, state_ai)
+    await call.message.answer('Ок! Дальше я на ваши сообщения буду отвечать изображениями 👩‍🎨\n\n'
+                              'Формула запроса для красивой картинки\n'
+                              '\n- Описываем, что будет на изображении: '
+                              'девушка, ребенок, кот, жираф, машина, яблоко, башня и т.д.'
+                              '\n- Конкретизируем и добавляем детали запросу: какая одежда, '
+                              'куда смотрит, поза, цвет и т.д.'
+                              '\n- Далее даем информацию, где наш объект, какой у него фон: '
+                              'море, город, горы, кабинет, без фона'
+                              '\n- Определяем стиль: фотография, поп-арт, техно-мистика, барокко и т.д. '
+                              '\n- Если стиля нет в списке доступных, то можно дописать его в запросе.\n\n'
+                              'Чтобы получилось изображение близкое к фотографии, то допиши: 4K, '
+                              'кинематографический свет, гиперреалистичность, сверхдетализация, '
+                              'реализм, фотореалистичный стиль')
+
+
+# ======================================================================================================================
+#                               Выбор нейронки
+# ======================================================================================================================
 async def kandinsky(call: types.CallbackQuery):
     user_id = call.from_user.id
     state_ai = 'kandinsky'
@@ -314,6 +361,14 @@ async def send_image(message):
 
 
 # ======================================================================================================================
+#                                             Рефералка
+# ======================================================================================================================
+async def get_ref(message: types.Message, ):
+    link = await create_start_link(bot, str(message.from_user.id), encode=True)
+    await message.answer(f"Ваша реферальная ссылка:\n{link}")
+
+
+# ======================================================================================================================
 #                                             Любой запрос
 # ======================================================================================================================
 async def echo(message: types.Message):
@@ -342,6 +397,8 @@ async def echo(message: types.Message):
         elif text in ['👥 Создать чат']:
             await new_chat(user_id)
             await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.", reply_markup=menu_keyboard)
+        elif text in ['🗣 Пригласить друга']:
+            await get_ref(message)
         # ==================================================================================================================
         #                                             Любой запрос к боту
         # ==================================================================================================================
@@ -370,6 +427,19 @@ async def echo(message: types.Message):
                     message_animation = await message.answer(random.choice(options))
 
                     await send_image_kandinsky(message, message.text)
+
+                    if request_img > 0:
+                        await update_requests(user_id, request, request_img - 1)
+
+                    # Удаляем сообщение с анимацией перед отправкой ответа
+                    await bot.delete_message(chat_id=message_animation.chat.id,
+                                             message_id=message_animation.message_id)
+            elif state_ai == 'kandinsky2_2':
+                if request_img != 0:
+                    # Отправляем анимацию перед запросом к OpenAI GPT
+                    message_animation = await message.answer(random.choice(options))
+
+                    await kandinsky2_2(message, message.text)
 
                     if request_img > 0:
                         await update_requests(user_id, request, request_img - 1)

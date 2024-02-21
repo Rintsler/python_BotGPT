@@ -1,17 +1,20 @@
 from aiogram import F
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, CommandObject
 from data.config import bot
 from data.controllers import start_cmd, echo, submit, back_to_profile, tp, bot_dialog, check_sub, delle_2, delle_3, \
-    Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions, kandinsky
+    Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions, kandinsky, for_kandinsky2_2
 from data.db_app import update_subscribe
 from data.metadata import Metadata
 from aiogram import types
 from datetime import datetime
 from nav.keyboard import menu_keyboard
+from app.modul_Kandinsky2_2 import kandinsky2_2
 
 router: Router = Router()
 router.message.register(start_cmd, CommandStart())
+# router.message.register(start_cmd, CommandStart(deep_link=True))
+
 router.callback_query.register(check_sub, F.data == 'reg')
 
 router.callback_query.register(submit, F.data == 'submit')
@@ -27,6 +30,7 @@ router.callback_query.register(year, F.data == 'year')
 router.callback_query.register(tp, F.data == 'tp')
 
 router.callback_query.register(kandinsky, F.data == 'kandinsky')
+router.callback_query.register(for_kandinsky2_2, F.data == 'kandinsky2_2')
 router.callback_query.register(delle_2, F.data == 'delle_2')
 router.callback_query.register(delle_3, F.data == 'delle_3')
 router.callback_query.register(bot_dialog, F.data == 'bot_dialog')

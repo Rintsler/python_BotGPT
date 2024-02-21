@@ -8,7 +8,7 @@ from data.db_app import get_user_data, update_requests
 from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 # async def update_tariffs_sub():

@@ -8,7 +8,8 @@ from data.metadata import Metadata
 menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="📊 Профиль")
+            KeyboardButton(text="📊 Профиль"),
+            KeyboardButton(text="🗣 Пригласить друга")
         ],
         [
             KeyboardButton(text="🧠 Нейросеть"),
@@ -39,7 +40,10 @@ menu_profile = InlineKeyboardMarkup(
 menu_ai = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Генерация изображения Kandinsky", callback_data='kandinsky')
+            InlineKeyboardButton(text="Генерация изображения Kandinsky 3.0", callback_data='kandinsky')
+        ],
+        [
+            InlineKeyboardButton(text="Генерация изображения Kandinsky 2.2", callback_data='kandinsky2_2')
         ],
         [
             InlineKeyboardButton(text="Генерация изображения Dell-e 2", callback_data='delle_2')

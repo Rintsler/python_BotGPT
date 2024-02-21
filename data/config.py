@@ -3,35 +3,13 @@ import os
 import requests
 import openai
 from aiogram import Bot, Dispatcher
-from aiogram.client.session import aiohttp
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-import aiohttp
-import asyncio
-
-# PROXY_END_POINT = '176.106.61.193:50100'
-# USERNAME = 'xzistq'
-# PASSWORD = 'V6m3IYJgdt'
-#
-#
-# async def get_response_using_proxy():
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get(
-#                 'https://ip.oxylabs.io/',
-#                 proxy=f'http://{USERNAME}:{PASSWORD}@{PROXY_END_POINT}'
-#         ) as response:
-#             print('Status Code: ', response.status)
-#             print('Body: ', await response.text())
-#
-#
-# loop_obj = asyncio.get_event_loop()
-# loop_obj.run_until_complete(get_response_using_proxy())
 
 chat_id = '-1001998602743'
 
-
-os.environ['HTTP_PROXY'] = "http://xzistq:V6m3IYJgdt@176.106.61.193:50100"
-os.environ['HTTPS_PROXY'] = "http://xzistq:V6m3IYJgdt@176.106.61.193:50100"
+os.environ['HTTP_PROXY'] = "http://osmanovolegj:IwcBev2efD@176.106.60.99:50100"
+os.environ['HTTPS_PROXY'] = "https://osmanovolegj:IwcBev2efD@176.106.60.99:50100"
 
 # URL, который вы хотите запросить
 url = "https://api.ipify.org"
@@ -54,13 +32,19 @@ try:
 except requests.RequestException as e:
     # Вывод ошибки, если что-то пошло не так
     print(f"Ошибка подключения к ПРОКСИ: {e}")
+
 # print(requests.get("https://api.ipify.org").text)
 
 SQLALCHEMY_URL = "sqlite+aiosqlite:///db.sqlite3"
 
-# BOT_TOKEN = '6612241633:AAEXsFrv8UveeeDyWuziyVfquC2_HsFREeg'
-BOT_TOKEN = '6384872240:AAFeFBDTmyE-LRKPU4Dwl5PUTNtIwV5pA4Y'
+# ТЕСТ
+BOT_TOKEN = '6961722181:AAHb8Djor842kI7oIEkO6GuSzZhMIoimQCM'
+
+# ОРИГИНАЛ
+# BOT_TOKEN = '6384872240:AAFeFBDTmyE-LRKPU4Dwl5PUTNtIwV5pA4Y'
 OPENAI_API_KEY = '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'
+
+# ОРИГИНАЛ
 YOOTOKEN = '390540012:LIVE:46409'
 
 # тест

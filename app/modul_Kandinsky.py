@@ -58,16 +58,14 @@ async def send_image_kandinsky(message: types.Message, text):
     model_id = await api.get_model()
     uuid = await api.generate(text, model_id, style=3)
     images = await api.check_generation(uuid)
-    image_base64 = images[0]  # Вставьте вашу строку base64 сюда
+    image = images[0]
 
     # Декодируем строку base64 в бинарные данные
+    image_data = base64.b64decode(image)
 
-    image_data = base64.b64decode(image_base64)
-
-    with open(f"image_Kandinsky/{message.from_user.id}.jpg", "wb") as file:
+    with open(f"image_Kandinsky3_0/{message.from_user.id}.jpg", "wb") as file:
         file.write(image_data)
 
-    photo = FSInputFile(f"image_Kandinsky/{message.from_user.id}.jpg")
+    photo = FSInputFile(f"image_Kandinsky3_0/{message.from_user.id}.jpg")
     # Отправляем изображение в сообщении
     await message.answer_photo(photo, caption="Нейросеть: Kandinsky")
-
