@@ -19,23 +19,25 @@ async def create_table():
                 registration_date DATETIME,
                 chat_history TEXT NULL DEFAULT '[]',
                 response_history TEXT NULL DEFAULT '[]',
-                request INTEGER,
-                request_img INTEGER,
-                period_sub INTEGER,
+                request INTEGER DEFAULT 0,
+                request_img INTEGER DEFAULT 0,
+                period_sub INTEGER DEFAULT 0,
                 sub_date DATETIME,
                 sub_date_end DATETIME,
-                remaining_days INTEGER,
-                payload INTEGER,
-                friends INTEGER
+                remaining_days INTEGER DEFAULT 0,
+                referrer TEXT,
+                referrals INTEGER DEFAULT 0,
+                last_amount INTEGER DEFAULT 0,
+                sum_amount INTEGER DEFAULT 0,
+                balans INTEGER DEFAULT 0
             )
         ''')
-
         await db.commit()
 
 
 # Создание таблицы в базе данных
 async def create_info_key_table():
-    async with aiosqlite.connect('Users.db') as db:
+    async with aiosqlite.connect('Api_keys.db') as db:
         cursor = await db.cursor()
         await cursor.execute('''
             CREATE TABLE IF NOT EXISTS info_key (
@@ -206,42 +208,53 @@ async def update_flag_requests(user_id, flag):
         print(f"Error reg user: {e}")
 
 
-async def add_user(user_id, username, payload, update):
+async def add_user(user_id, username, referrer, ref):
     try:
         async with aiosqlite.connect('Users.db') as db:
-            if update:
-                await db.execute('''
-                                    UPDATE users
-                                    SET payload = ?
-                                    WHERE user_id = ?
-                                    ''', (payload, user_id))
-                await db.commit()
-
+            if ref:
                 cursor = await db.execute('''
-                                             SELECT payload > 0 FROM users WHERE user_id = ?
-                                             ''', (payload, user_id))
-                result = await cursor.fetchone()
-                if not result:
+                                             SELECT user_id FROM users WHERE user_id = ?
+                                          ''', (user_id,))
+                check_user = await cursor.fetchone()
+
+                if check_user is None:
                     await db.execute('''
-                                        UPDATE users
-                                        SET friends = friends + ?
-                                        WHERE user_id = ?
-                                        ''', (1, payload))
+                        UPDATE users
+                        SET referrals = referrals + 1
+                        WHERE user_id = ?
+                    ''', (referrer,))
+                    await db.execute('''
+                                        INSERT INTO users (user_id, username, referrer)
+                                        VALUES (?, ?, ?)
+                                    ''', (user_id, username, referrer))
                     await db.commit()
             else:
                 await db.execute('''
-                                    INSERT INTO users (user_id, username, payload)
-                                    VALUES (?, ?, ?)
-                                ''', (user_id, username, payload))
+                    INSERT INTO users (user_id, username, referrer)
+                    VALUES (?, ?, ?)
+                ''', (user_id, username, referrer))
                 await db.commit()
     except Exception as e:
         print(f"Error add user: {e}")
 
 
 # Обновление данных пользователя в базе данных
-async def update_subscribe(flag, sub_date, sub_date_end, request, request_img, period, user_id):
+async def update_subscribe(flag, sub_date, sub_date_end, request, request_img, period, last_amount, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                                    SELECT referrer, last_amount FROM users WHERE user_id = ?
+                                                ''', (user_id,))
+            referrer, l_amount = await cursor.fetchone()
+
+            if referrer != 0 and l_amount == 0:
+                await db.execute('''
+                                    UPDATE users
+                                    SET balans = balans + (? * 0.1)
+                                    WHERE user_id = ?
+                                ''', (last_amount, referrer))
+                await db.commit()
+
             await db.execute('''
                                 UPDATE users
                                 SET flag = ?,
@@ -249,9 +262,12 @@ async def update_subscribe(flag, sub_date, sub_date_end, request, request_img, p
                                 sub_date_end = ?,
                                 request = ?, 
                                 request_img = ?,
-                                period_sub = ?
+                                period_sub = ?,
+                                last_amount = ?,
+                                sum_amount = sum_amount + ?
                                 WHERE user_id = ?
-                            ''', (flag, sub_date, sub_date_end, request, request_img, period, user_id))
+                            ''', (flag, sub_date, sub_date_end, request, request_img, period,
+                                  last_amount, last_amount, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error updating user: {e}")
@@ -271,11 +287,24 @@ async def new_chat(user_id):
         print(f"Ошибка при обнулении чата: {e}")
 
 
-async def get_flag_and_req(user_id):
+async def get_flag(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
-                                        SELECT flag, request, request_img FROM users WHERE user_id = ?
+                                        SELECT flag FROM users WHERE user_id = ?
+                                        ''', (user_id,))
+            result = await cursor.fetchone()
+            return result[0]
+    except Exception as e:
+        print(f"Получить флаг из БД не получилось: {e}")
+        return None
+
+
+async def get_req(user_id):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                        SELECT request, request_img FROM users WHERE user_id = ?
                                         ''', (user_id,))
             result = await cursor.fetchone()
             return result

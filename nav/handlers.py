@@ -75,15 +75,18 @@ async def successful_pay(message: types.Message):
     if Metadata.subscription == 'Light':
         request = 35
         request_img = 15
-        await update_subscribe(2, sub_date, sub_date_end, request, request_img, Metadata.sub_period, user_id)
+        await update_subscribe(2, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
+                               Metadata.sub_sum_db, user_id)
     elif Metadata.subscription == 'Middle':
         request = -1
         request_img = 40
-        await update_subscribe(3, sub_date, sub_date_end, request, request_img, Metadata.sub_period, user_id)
+        await update_subscribe(3, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
+                               Metadata.sub_sum_db, user_id)
     elif Metadata.subscription == 'Premium':
         request = -1
         request_img = -1
-        await update_subscribe(4, sub_date, sub_date_end, request, request_img, Metadata.sub_period, user_id)
+        await update_subscribe(4, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
+                               Metadata.sub_sum_db, user_id)
 
     response_text = f'Вы подключили тариф {Metadata.subscription}, он будет действовать до {sub_date_end}. Спасибо!'
     await message.answer(response_text, reply_markup=menu_keyboard)

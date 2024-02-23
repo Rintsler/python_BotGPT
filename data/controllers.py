@@ -4,18 +4,19 @@ import openai
 from aiogram import types, Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.payload import decode_payload
-
-from app.modul_Kandinsky import send_image_kandinsky
+from app.modul_Kandinsky3_0 import send_image_kandinsky
 from app.modul_Kandinsky2_2 import kandinsky2_2
 from app.moduls import generate_response, profile, counting_pay, Subscribe, calc_sum
 from app.update_keys import get_unused_key
 from data.config import bot, chat_id
-from data.db_app import reg_user, new_chat, get_user_history, update_user_history, \
-    add_response_to_history, set_state_ai, get_state_ai, get_flag_and_req, add_user, update_requests
+from data.db_app import (reg_user, new_chat, get_user_history, update_user_history,
+                         add_response_to_history, set_state_ai, get_state_ai, add_user, update_requests, get_flag,
+                         get_req)
 from data.metadata import Metadata
 from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai
 from aiogram.utils.deep_linking import create_start_link
 from aiogram.filters import CommandObject
+from aiogram.enums import ParseMode
 
 options = [
     "🤔 Осторожно, работает умная машина...",
@@ -26,27 +27,48 @@ options = [
 
 
 async def start_cmd(message: types.Message, command: CommandObject):
-    payload = None
     first_name = message.from_user.first_name
     username = message.from_user.username
     user_id = message.from_user.id
-    result = await get_flag_and_req(user_id)
-    args = command.args
-    try:
-        payload = decode_payload(args)
-    except Exception as e:
-        print(f"Ошибка при получении информации о пользователе в Start: {e}")
-    if payload:
-        ref_username = await get_username_by_user_id(bot, int(payload))
-        await add_user(user_id, username, payload, True)
-        await message.answer(f'Ваш реферер: \nid:{payload}'
-                             f'\n{ref_username}')
-    if not result:
-        await add_user(user_id, username, payload, False)
-    await message.answer(
-        f'Привет, {first_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите "Готово". '
-        'Вы получите 30 бесплатных запросов диалогах с Izi и 10 запросов на генерацию изображений.',
-        reply_markup=inline_markup_reg)
+    referrer = None
+
+    args = command.args  # Получаем зашифрованный ID реферера
+    if args:
+        # Дешифруем ID реферера
+        referrer = decode_payload(args)
+        referrer = int(referrer)
+
+        if int(referrer) != user_id:
+            ref_username = await get_username_by_user_id(bot, referrer)
+            # Обновляем данные пользователя
+            await add_user(user_id, username, referrer, True)
+
+            if ref_username:
+                await message.answer(f'Ваш реферер: \nid: {referrer}'
+                                     f'\n{ref_username}')
+                await message.answer(
+                    f'Привет, {first_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите '
+                    f'"Готово". Вы получите 30 бесплатных запросов диалогах с Izi и 10 '
+                    f'запросов на генерацию изображений.',
+                    reply_markup=inline_markup_reg)
+
+                # Уведомляем реферера
+                await bot.send_message(chat_id=referrer, text=f'Ваш реферал теперь с нами: \nid: {user_id}'
+                                                              f'\n{username}')
+            else:
+                await message.answer('Не найдено информации о пользователе, который вас пригласил.')
+        else:
+            await message.answer('Вы перешли по своей же ссылке 😄')
+    else:
+        result = await get_flag(user_id)
+
+        # Если в БД нет пользователя, добавляем
+        if not result:
+            await add_user(user_id, username, referrer, False)
+        await message.answer(
+            f'Привет, {first_name}!\nДля пользования ботом, подпишитесь на наш новостной канал и нажмите "Готово". '
+            'Вы получите 30 бесплатных запросов диалогах с Izi и 10 запросов на генерацию изображений.',
+            reply_markup=inline_markup_reg)
 
 
 async def get_username_by_user_id(bot: Bot, user_id: int):
@@ -63,7 +85,7 @@ async def get_username_by_user_id(bot: Bot, user_id: int):
 # ======================================================================================================================
 async def submit(call: types.CallbackQuery):
     user_id = call.from_user.id
-    flag, request, request_img = await get_flag_and_req(user_id)
+    flag = await get_flag(user_id)
 
     if flag > 1:
         await bot.edit_message_text(
@@ -85,8 +107,9 @@ async def submit(call: types.CallbackQuery):
 # ======================================================================================================================
 async def Light(call: types.CallbackQuery):
     Metadata.sub_sum = 10000
-    await calc_sum(100)
     Metadata.subscription = 'Light'
+    await calc_sum(100)
+    Metadata.sub_sum_db = 100
     await bot.edit_message_text('📝 Диалог с Izi - 35 запросов в сутки\n'
                                 '🖼️ Генерация изображений - 15 запросов в сутки\n'
                                 'На какой период хотите подключить тариф - Базовый?',
@@ -119,6 +142,7 @@ async def Middle(call: types.CallbackQuery):
     Metadata.sub_sum = 25000
     Metadata.subscription = 'Middle'
     await calc_sum(250)
+    Metadata.sub_sum_db = 250
     await bot.edit_message_text('📝 Диалог с Izi - без ограничений 😺\n'
                                 '🖼️ Генерация изображений - 40 запросов в сутки\n'
                                 'На какой период хотите подключить тариф - Расширенный?',
@@ -148,9 +172,10 @@ async def Middle(call: types.CallbackQuery):
 
 
 async def Full(call: types.CallbackQuery):
+    Metadata.subscription = 'Premium'
     Metadata.sub_sum = 45000
     await calc_sum(450)
-    Metadata.subscription = 'Premium'
+    Metadata.sub_sum_db = 450
     await bot.edit_message_text('♾️ Полный безлимит на запросы к Izi 🤩\n'
                                 'На какой период хотите подключить тариф - Премиум?',
                                 chat_id=call.message.chat.id,
@@ -245,8 +270,12 @@ async def check_sub(call: types.CallbackQuery):
     member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
     print('Проверка на членство в канале: ', member)
     if member.status != 'left':
-        flag, request, request_img = await get_flag_and_req(user_id)
-        if flag == 0 or flag is None:
+        flag = await get_flag(user_id)
+
+        result = await get_req(user_id)
+        if result:
+            request, request_img = result
+        if flag is None or flag == 0:
             flag = 1
             request = 30
             request_img = 10
@@ -260,8 +289,8 @@ async def check_sub(call: types.CallbackQuery):
                 reply_markup=menu_keyboard)
         elif flag == 1:
             await call.message.answer(
-                f'Спасибо за подписку на наш канал! Вам доступно на данный момент бесплатно {request} запросов для '
-                f'диалога и {request_img} запросов для генерации изображений 🫶🏻',
+                f'Спасибо за подписку на наш новостной канал! Вам доступно на данный момент бесплатно {request} '
+                f'запросов для диалога и {request_img} запросов для генерации изображений 🫶🏻',
                 reply_markup=menu_keyboard)
         else:
             await call.message.answer(
@@ -377,8 +406,10 @@ async def echo(message: types.Message):
     print(member)
     if member.status != 'left':
         text = message.text
-        result = await get_flag_and_req(user_id)
-        flag, request, request_img = result
+        flag = await get_flag(user_id)
+        result = await get_req(user_id)
+        if result:
+            request, request_img = result
         # ==================================================================================================================
         #                                             Профиль
         # ==================================================================================================================

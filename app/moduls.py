@@ -9,45 +9,8 @@ from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
 import asyncio
 from datetime import datetime
-
-
-# async def update_tariffs_sub():
-#     # Подключаемся к базе данных
-#     connection = sqlite3.connect('users.db')
-#     cursor = connection.cursor()
-#
-#     # Получаем текущую дату
-#     current_date = datetime.now()
-#
-#     # Выполняем запрос для выборки данных
-#     cursor.execute('SELECT id, sub_date, period_sub, flag FROM users WHERE flag > 1')
-#
-#     rows = cursor.fetchall()
-#     print("Проверяю базу")
-#     for row in rows:
-#         user_id, sub_date, period_sub, flag = row
-#
-#         # Проверяем, что значение sub_date не является None перед преобразованием
-#         if sub_date:
-#             # Преобразуем строку в формат datetime с учетом миллисекунд
-#             sub_date = datetime.strptime(sub_date, '%Y-%m-%d %H:%M')
-#
-#             # Проверяем условия для обновления
-#             if flag > 1:
-#                 if period_sub == 1:
-#                     if (current_date - sub_date).days > 30:
-#                         cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
-#                 elif period_sub == 6:
-#                     if (current_date - sub_date).days > 180:
-#                         cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
-#                 elif period_sub == 12:
-#                     if (current_date - sub_date).days > 364:
-#                         cursor.execute('UPDATE users SET flag = 1, sub_date = ? WHERE id = ?', ('', user_id))
-#
-#     # Сохраняем изменения и закрываем соединение
-#     print("Обновил подписки")
-#     connection.commit()
-#     connection.close()
+import tkinter as tk
+from tkinter import font
 
 
 async def calculate_remaining_days(sub_date_end):
@@ -135,37 +98,96 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message, reque
 
 
 async def profile(user_id):
-    subscribe = ''
-    pk, state_ai, user_id, flag, username, registration_date, chat_history, response_history, request, request_img, \
-        period_sub, sub_date, sub_date_end, remaining_days = await get_user_data(user_id)
-    user_info = [pk, user_id, flag, username, registration_date, chat_history, response_history, request, request_img,
-                 period_sub, sub_date, sub_date_end, remaining_days]
-    if sub_date_end is not None:
-        remaining_days = await calculate_remaining_days(sub_date_end)
-    else:
-        remaining_days = ''
+    # Получаем данные пользователя из функции get_user_data
+    (pk, state_ai, user_id, flag, username, registration_date, chat_history,
+     response_history, request, request_img, period_sub, sub_date, sub_date_end,
+     remaining_days, referrer, referrals, last_amount, sum_amount, balans) = await get_user_data(user_id)
 
-    for i in user_info:
-        if i is None:
-            i = ''
-    if flag == 2:
-        subscribe = "Базовый"
-    elif flag == 3:
-        subscribe = "Расширенный"
-    elif flag == 4:
-        subscribe = "Премиум"
+    # Рассчитываем оставшееся количество дней
+    remaining_days = await calculate_remaining_days(sub_date_end) if sub_date_end is not None else None
 
+    # Форматируем период подписки
+    string_period = f'{sub_date} - {sub_date_end}\n\n' if sub_date_end is not None else '\n\n'
+
+    # Форматируем referrals
+    string_referrals = f'{referrals} пользователя(ей)\n\n' if referrals is not None else '\n\n'
+
+    # Форматируем remaining_days
+    string_remaining_days = f'{remaining_days} дня(ей)\n\n' if remaining_days is not None else '\n\n'
+
+    # Форматируем balans
+    string_balans = f'{balans} руб.' if balans is not None else ''
+
+    request = 'Безлимит' if request < 0 else request
+    request_img = 'Безлимит' if request_img < 0 else request_img
+
+    # Определяем тип подписки
+    subscribe = {
+        2: "Базовый",
+        3: "Расширенный",
+        4: "Премиум"
+    }.get(flag, '')
+
+    # Формируем текст профиля
     profile_text = (
-        "📊 Ваш профиль\n\n"
+        "<b>Ваш профиль</b>\n\n"
         f"👤 Ваш ID: {user_id}\n\n"
-        f"🗓 Дата регистрации: {registration_date}\n\n\n"
-        f"💼 Тариф: {subscribe}\n\n"
-        f"⏳ Период действия: {sub_date} - {sub_date_end}\n\n"
-        f"📝 Запросы - диалог: {request}\n\n"
-        f"🏞 Запросы - изображения: {request_img}\n\n"
-        f"⏲ Осталось дней подписки: {remaining_days}\n"
+        f"🗓 Дата регистрации: {registration_date}\n\n"
+        "<b>Тариф:</b>\n"
+        f"  • Тип: {subscribe}\n"
+        f"  • Период действия: {string_period}"
+        "<b>Суточный лимит:</b>\n\n"
+        f"📝 Запросы: {request}\n\n"
+        f"🏞 Изображения: {request_img}\n\n"
+        f"📆 До окончания тарифа: {string_remaining_days}"
+        "<b>Реферальная программа:</b>\n\n"
+        f"🤝 Вы привели: {string_referrals}"
+        f"💳 Баланс по реферальной\nпрограмме: {string_balans}"
     )
     return profile_text
+
+    # subscribe = ''
+    # (pk, state_ai, user_id, flag, username, registration_date, chat_history,
+    #  response_history, request, request_img, period_sub, sub_date, sub_date_end,
+    #  remaining_days, referrer, referrals, last_amount, sum_amount, balans) = await get_user_data(user_id)
+    #
+    # user_info = [pk, user_id, flag, username, registration_date, chat_history,
+    #              response_history, request, request_img, period_sub, sub_date,
+    #              sub_date_end, remaining_days, referrer, referrals, last_amount,
+    #              sum_amount, balans]
+    # string_period = f'{sub_date} - {sub_date_end}\n\n'
+    # if sub_date_end is not None:
+    #     remaining_days = await calculate_remaining_days(sub_date_end)
+    # else:
+    #     remaining_days = ''
+    #
+    # for i in user_info:
+    #     if i is None:
+    #         i = ''
+    # if flag == 2:
+    #     subscribe = "Базовый"
+    # elif flag == 3:
+    #     subscribe = "Расширенный"
+    # elif flag == 4:
+    #     subscribe = "Премиум"
+    # else:
+    #     subscribe = ''
+    #     string_period = ''
+    #
+    # profile_text = (
+    #     "📊 Ваш профиль\n\n"
+    #     f"👤 Ваш ID: {user_id}\n\n"
+    #     f"🗓 Дата регистрации: {registration_date}\n\n\n"
+    #     f"💼 Тариф: {subscribe}\n\n"
+    #     f"⏳ Период действия: {string_period}\n\n\n"
+    #     f"Суточный лимит\n\n"
+    #     f"📝 Запросы: {request}\n\n"
+    #     f"🏞 Изображения: {request_img}\n\n"
+    #     f"⏲ До окончания тарифа : {remaining_days} дня(ей)\n\n"
+    #     f"⏲ Вы привели: {referrals} пользователя(ей)\n"
+    #     f"⏲ Баланс по реферальной программе: {balans}\n"
+    # )
+    # return profile_text
 
 
 async def Subscribe():
@@ -194,6 +216,8 @@ async def calc_sum(sub_sum):
 
 async def counting_pay(factor, user_id):
     sub_sum = Metadata.sub_sum * factor
+    Metadata.sub_sum_db = Metadata.sub_sum_db * factor
+
     description = ''
     if Metadata.subscription == 'Light':
         description = Metadata.description_Light
@@ -201,6 +225,7 @@ async def counting_pay(factor, user_id):
         description = Metadata.description_Middle
     elif Metadata.subscription == 'Premium':
         description = Metadata.description_Premium
+
     await bot.send_invoice(
         chat_id=user_id,
         title='Квитанция к оплате',
@@ -209,7 +234,7 @@ async def counting_pay(factor, user_id):
         provider_token=YOOTOKEN,
         currency='RUB',
         prices=[LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=sub_sum)],
-        max_tip_amount=10000000,
+        max_tip_amount=1000000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
         start_parameter='Izi_bot',
         provider_data=None,
