@@ -5,7 +5,7 @@ import aiosqlite
 
 async def update_expired_keys():
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             async with db.execute(
                     '''SELECT * 
                     FROM info_key 
@@ -24,7 +24,7 @@ async def update_expired_keys():
 
 async def update_days_keys():
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             async with db.execute(
                     '''SELECT * 
                     FROM info_key 
@@ -44,7 +44,7 @@ async def update_days_keys():
 
 async def update_one_keys():
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             three_minutes_ago = datetime.now() - timedelta(minutes=3)
             async with db.execute(
                     '''SELECT * FROM info_key WHERE status_key=1 AND status_change < ?''', (three_minutes_ago,)
@@ -71,7 +71,7 @@ async def schedule_thread():
 
 async def get_unused_key():
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             async with db.execute('''
                                     SELECT * 
                                     FROM info_key 
@@ -96,7 +96,7 @@ async def get_unused_key():
 
 async def log_error(api_key, error_text):
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             await db.execute('''UPDATE info_key SET status_error=? WHERE api_key=?''', (error_text, api_key))
             await db.commit()
     except Exception as e:
@@ -105,7 +105,7 @@ async def log_error(api_key, error_text):
 
 async def update_key_status(api_key, status):
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             await db.execute('''UPDATE info_key SET status_key=?, status_change=datetime("now") WHERE api_key=?''',
                              (status, api_key))
             await db.execute(
@@ -118,7 +118,7 @@ async def update_key_status(api_key, status):
 
 async def reset_key_status(api_key):
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             await db.execute('''UPDATE info_key SET status_key=0,status_change=datetime("now") WHERE api_key=?''',
                              (api_key,))
             await db.commit()
@@ -128,7 +128,7 @@ async def reset_key_status(api_key):
 
 async def set_key_status_to_2(api_key):
     try:
-        async with aiosqlite.connect('Users.db') as db:
+        async with aiosqlite.connect('Api_keys.db') as db:
             await db.execute('''UPDATE info_key SET status_key=2 WHERE api_key=?''', (api_key,))
             await db.commit()
     except Exception as e:

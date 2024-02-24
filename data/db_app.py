@@ -83,6 +83,15 @@ async def update_tariffs_sub():
                 # Преобразовываем sub_date_end в объект datetime
                 sub_date_end_datetime = datetime.strptime(sub_date_end, "%d.%m.%Y")
 
+                # Рассчитываем разницу в днях
+                difference = await calculate_remaining_days(sub_date_end)
+                # Обновляем остаток дней в БД
+                await cursor.execute('''
+                                        UPDATE users
+                                        SET remaining_days = ?
+                                        WHERE user_id = ?
+                                        ''', (difference, user_id))
+
                 # Вычитаем 3 дня из sub_date_end
                 date_for_message = sub_date_end_datetime - timedelta(days=3)
 
@@ -123,6 +132,37 @@ async def update_requests_db():
         # Сохраняем изменения и закрываем соединение
         await connection.commit()
     print("!!!!!!!!!!!!!!!!!!  Суточные лимиты обновлены  !!!!!!!!!!!!!!!!!!")
+
+
+async def sum_balans():
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                        SELECT balans FROM users WHERE balans > 0
+                                    ''')
+            rows = await cursor.fetchone()
+
+            for row in rows:
+                sum_row = + row
+
+            return sum_row
+    except Exception as e:
+        print(f"Error update_remaining_days: {e}")
+
+
+async def calculate_remaining_days(sub_date_end):
+    try:
+        sub_date_end = datetime.strptime(sub_date_end, '%d.%m.%Y')
+        current_date = datetime.now()
+
+        # Рассчитываем разницу в днях
+        difference = sub_date_end - current_date
+
+        # Получаем количество дней в разнице
+        return difference.days
+    except ValueError as e:
+        print(f"Ошибка при преобразовании даты: {e}")
+        return None
 
 
 async def scheduler():
@@ -175,34 +215,6 @@ async def reg_user(user_id, registration_date, request, request_img, flag):
                                 request = ?, request_img = ?, flag = ?
                                 WHERE user_id = ?
                             ''', (registration_date, request, request_img, flag, user_id))
-            await db.commit()
-    except Exception as e:
-        print(f"Error reg user: {e}")
-
-
-# Обновление флага после потраченных 30/10
-async def update_flag_requests_img(user_id, flag):
-    try:
-        async with aiosqlite.connect('Users.db') as db:
-            await db.execute('''
-                                UPDATE users 
-                                SET user_id = ?, flag = ?
-                                WHERE user_id = ?
-                            ''', (user_id, flag, user_id))
-            await db.commit()
-    except Exception as e:
-        print(f"Error reg user: {e}")
-
-
-# Обновление флага после потраченных 30/10
-async def update_flag_requests(user_id, flag):
-    try:
-        async with aiosqlite.connect('Users.db') as db:
-            await db.execute('''
-                                UPDATE users 
-                                SET user_id = ?, flag = ?
-                                WHERE user_id = ?
-                            ''', (user_id, flag, user_id))
             await db.commit()
     except Exception as e:
         print(f"Error reg user: {e}")

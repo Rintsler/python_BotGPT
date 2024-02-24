@@ -2,8 +2,9 @@ from aiogram import F
 from aiogram import Router
 from aiogram.filters import CommandStart, CommandObject
 from data.config import bot
-from data.controllers import start_cmd, echo, submit, back_to_profile, tp, bot_dialog, check_sub, delle_2, delle_3, \
-    Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions, kandinsky, for_kandinsky2_2
+from data.controllers import (start_cmd, echo, submit, back_to_profile, tp, bot_dialog, check_sub, delle_2, delle_3,
+                              Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions,
+                              kandinsky, for_kandinsky2_2)
 from data.db_app import update_subscribe
 from data.metadata import Metadata
 from aiogram import types

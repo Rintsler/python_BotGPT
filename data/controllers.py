@@ -514,7 +514,7 @@ async def echo(message: types.Message):
 
                 await add_response_to_history(user_id, response_history)
 
-                await message.answer(response, reply_markup=menu_keyboard)
+                await message.answer(str(response), reply_markup=menu_keyboard)
             else:
                 await message.answer('Дневной лимит для ответов Izi исчерпан. Выберите тариф и продолжите 🛒',
                                      reply_markup=inline_submit_preview)

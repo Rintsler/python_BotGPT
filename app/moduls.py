@@ -1,31 +1,12 @@
-import datetime
 import traceback
 import openai
 from aiogram.types import LabeledPrice
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
-from data.config import bot, YOOTOKEN
-from data.db_app import get_user_data, update_requests
+from data.config import bot, YOOTOKEN, admins_id
+from data.db_app import get_user_data, update_requests, sum_balans
 from data.metadata import Metadata
 from nav.keyboard import inline_kb_pay
 import asyncio
-from datetime import datetime
-import tkinter as tk
-from tkinter import font
-
-
-async def calculate_remaining_days(sub_date_end):
-    try:
-        sub_date_end = datetime.strptime(sub_date_end, '%d.%m.%Y')
-        current_date = datetime.now()
-
-        # Рассчитываем разницу в днях
-        difference = sub_date_end - current_date
-
-        # Получаем количество дней в разнице
-        return difference.days
-    except ValueError as e:
-        print(f"Ошибка при преобразовании даты: {e}")
-        return None
 
 
 async def generate_response(user_id, chat_history, message, request, request_img):
@@ -58,7 +39,7 @@ async def generate_response(user_id, chat_history, message, request, request_img
         error_text = traceback.format_exc()
         print(f"Ошибка RateLimit: {e}")
         await log_error(api_key, error_text)
-        return handle_rate_limit_error(user_id, api_key, chat_history, message)
+        return await handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img)
 
 
 async def handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img):
@@ -94,7 +75,7 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message, reque
         error_text = traceback.format_exc()
         print(f"Ошибка RateLimit: {e}")
         await log_error(api_key, error_text)
-        return handle_rate_limit_error(user_id, api_key, chat_history, message)
+        return await handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img)
 
 
 async def profile(user_id):
@@ -102,9 +83,6 @@ async def profile(user_id):
     (pk, state_ai, user_id, flag, username, registration_date, chat_history,
      response_history, request, request_img, period_sub, sub_date, sub_date_end,
      remaining_days, referrer, referrals, last_amount, sum_amount, balans) = await get_user_data(user_id)
-
-    # Рассчитываем оставшееся количество дней
-    remaining_days = await calculate_remaining_days(sub_date_end) if sub_date_end is not None else None
 
     # Форматируем период подписки
     string_period = f'{sub_date} - {sub_date_end}\n\n' if sub_date_end is not None else '\n\n'
@@ -144,6 +122,13 @@ async def profile(user_id):
         f"🤝 Вы привели: {string_referrals}"
         f"💳 Баланс по реферальной\nпрограмме: {string_balans}"
     )
+    string_sum_balans = await sum_balans()
+
+    profile_text = (
+        profile_text +
+        f"\n\n\n💳 Общий баланс по всем пользователям реферальной программы: "
+        f"{string_sum_balans}" if user_id == admins_id[0] or user_id == admins_id[1] else profile_text)
+
     return profile_text
 
     # subscribe = ''

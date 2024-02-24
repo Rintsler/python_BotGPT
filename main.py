@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from data.config import dp
+from data.config import dp, admins_id
 from data.db_app import create_info_key_table, create_table, scheduler
 from nav.handlers import *
 
@@ -23,6 +23,7 @@ if __name__ == '__main__':
         loop.create_task(scheduler())
         loop.run_until_complete(main())
         asyncio.run(main())
+
 
     except KeyboardInterrupt:
         print('Бот завершил работу')
