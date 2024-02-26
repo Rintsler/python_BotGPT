@@ -18,8 +18,10 @@ async def generate_response(user_id, chat_history, message, request, request_img
     try:
         await update_key_status(api_key, 1)
 
-        system_message = {"role": "system", "content": "You are a helpful assistant"}
-        messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
+        system_message = {"role": "system", "content": "Тебя зовут Izi, ты девушка, ты девочка, ты женщина,"
+                                                       "отвечай всегда в женском роде и немного пренебрежительно,"
+                                                       "отвечать можешь иногда с сарказмом"}
+        messages = [system_message] + chat_history[-20:]  # Передаем последние два сообщения
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo-16k",
             api_key=api_key,
@@ -30,6 +32,7 @@ async def generate_response(user_id, chat_history, message, request, request_img
             presence_penalty=0
         )
         otvet = response['choices'][0]['message']['content'].strip()
+        print(response)
         print("Обновляем столбцы request, request_img в базе данных")
         if request > 0:
             await update_requests(user_id, request - 1, request_img)
@@ -78,11 +81,12 @@ async def handle_rate_limit_error(user_id, api_key, chat_history, message, reque
         return await handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img)
 
 
-async def profile(user_id):
+async def profile(user_id, switch=0):
     # Получаем данные пользователя из функции get_user_data
     (pk, state_ai, user_id, flag, username, registration_date, chat_history,
      response_history, request, request_img, period_sub, sub_date, sub_date_end,
-     remaining_days, referrer, referrals, last_amount, sum_amount, balans) = await get_user_data(user_id)
+     remaining_days, referrer, referrals, last_amount, sum_amount, balans,
+     banking_details) = await get_user_data(user_id)
 
     # Форматируем период подписки
     string_period = f'{sub_date} - {sub_date_end}\n\n' if sub_date_end is not None else '\n\n'
@@ -120,59 +124,60 @@ async def profile(user_id):
         f"📆 До окончания тарифа: {string_remaining_days}"
         "<b>Реферальная программа:</b>\n\n"
         f"🤝 Вы привели: {string_referrals}"
-        f"💳 Баланс по реферальной\nпрограмме: {string_balans}"
+        f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
+        f"💳 Ваши реквизиты для вывода: {banking_details}"
     )
     string_sum_balans = await sum_balans()
 
-    profile_text = (
-        profile_text +
+    full_profile_text = (
+            profile_text +
+            f"\n\n\n💳 Общий баланс по всем пользователям реферальной программы: "
+            f"{string_sum_balans}")
+
+    profile_text = full_profile_text if user_id == admins_id[0] or user_id == admins_id[1] else profile_text
+
+    order_profile_text = (
+        f"👤 ID: {user_id}\n\n"
+        f"🗓 Дата регистрации: {registration_date}\n\n"
+        "<b>Тариф:</b>\n"
+        f"  • Тип: {subscribe}\n"
+        f"  • Период действия: {string_period}"
+        "<b>Суточный лимит:</b>\n\n"
+        f"📝 Запросы: {request}\n\n"
+        f"🏞 Изображения: {request_img}\n\n"
+        f"📆 До окончания тарифа: {string_remaining_days}"
+        "<b>Реферальная программа:</b>\n\n"
+        f"🤝 Привел: {string_referrals}"
+        f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
+        f"💳 Реквизиты для вывода: {banking_details}"
         f"\n\n\n💳 Общий баланс по всем пользователям реферальной программы: "
-        f"{string_sum_balans}" if user_id == admins_id[0] or user_id == admins_id[1] else profile_text)
+        f"{string_sum_balans}")
 
-    return profile_text
+    return order_profile_text if switch else profile_text
 
-    # subscribe = ''
-    # (pk, state_ai, user_id, flag, username, registration_date, chat_history,
-    #  response_history, request, request_img, period_sub, sub_date, sub_date_end,
-    #  remaining_days, referrer, referrals, last_amount, sum_amount, balans) = await get_user_data(user_id)
-    #
-    # user_info = [pk, user_id, flag, username, registration_date, chat_history,
-    #              response_history, request, request_img, period_sub, sub_date,
-    #              sub_date_end, remaining_days, referrer, referrals, last_amount,
-    #              sum_amount, balans]
-    # string_period = f'{sub_date} - {sub_date_end}\n\n'
-    # if sub_date_end is not None:
-    #     remaining_days = await calculate_remaining_days(sub_date_end)
-    # else:
-    #     remaining_days = ''
-    #
-    # for i in user_info:
-    #     if i is None:
-    #         i = ''
-    # if flag == 2:
-    #     subscribe = "Базовый"
-    # elif flag == 3:
-    #     subscribe = "Расширенный"
-    # elif flag == 4:
-    #     subscribe = "Премиум"
-    # else:
-    #     subscribe = ''
-    #     string_period = ''
-    #
-    # profile_text = (
-    #     "📊 Ваш профиль\n\n"
-    #     f"👤 Ваш ID: {user_id}\n\n"
-    #     f"🗓 Дата регистрации: {registration_date}\n\n\n"
-    #     f"💼 Тариф: {subscribe}\n\n"
-    #     f"⏳ Период действия: {string_period}\n\n\n"
-    #     f"Суточный лимит\n\n"
-    #     f"📝 Запросы: {request}\n\n"
-    #     f"🏞 Изображения: {request_img}\n\n"
-    #     f"⏲ До окончания тарифа : {remaining_days} дня(ей)\n\n"
-    #     f"⏲ Вы привели: {referrals} пользователя(ей)\n"
-    #     f"⏲ Баланс по реферальной программе: {balans}\n"
-    # )
-    # return profile_text
+
+async def ref_menu():
+    ref_text = (
+        'Добро пожаловать в нашу партнерскую программу!'
+        'Мы предлагаем вам уникальную возможность зарабатывать, привлекая новых пользователей '
+        'в нашу платформу. Как партнер, вы будете получать 10% от первого платежа каждого '
+        'привлеченного вами пользователя.\n\n'
+        'Мы гордимся высоким качеством нашей платформы и уверены, что она может принести '
+        'пользу и удовлетворение новым пользователям. Ваша задача - поделиться этим знанием '
+        'с другими и помочь им стать частью нашего сообщества.\n\n'
+        'Программа проста и прозрачна: вы привлекаете новых пользователей с помощью '
+        'уникальной реферальной ссылки, и когда они регистрируются и осуществляют '
+        'свой первый платеж, вы получаете 10% от суммы этого платежа. Ваши заработки '
+        'неограничены и зависят только от количества привлеченных вами пользователей.\n\n'
+        'Мы предоставляем вам все необходимые инструменты и поддержку для успешного '
+        'привлечения пользователей. У вас будет доступ к статистике, включающей '
+        'информацию о количестве привлеченных пользователей и заработанных комиссиях. '
+        'Кроме того, наша команда всегда готова ответить на ваши вопросы и помочь вам '
+        'в любое время.'
+        'Присоединяйтесь к нашей партнерской программе и начните зарабатывать прямо '
+        'сейчас! Мы будем рады видеть вас в нашей команде успешных партнеров.'
+    )
+    return ref_text
 
 
 async def Subscribe():

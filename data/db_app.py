@@ -29,7 +29,8 @@ async def create_table():
                 referrals INTEGER DEFAULT 0,
                 last_amount INTEGER DEFAULT 0,
                 sum_amount INTEGER DEFAULT 0,
-                balans INTEGER DEFAULT 0
+                balans INTEGER DEFAULT 0,
+                banking_details TEXT DEFAULT ''
             )
         ''')
         await db.commit()
@@ -58,6 +59,7 @@ async def create_info_key_table():
         await db.commit()
 
 
+# Действие тарифов
 async def update_tariffs_sub():
     # Подключаемся к базе данных
     async with aiosqlite.connect('Users.db') as connection:
@@ -112,6 +114,7 @@ async def update_tariffs_sub():
     print("!!!!!!!!!!!!!!!!!!  Действие тарифов проверено  !!!!!!!!!!!!!!!!!!")
 
 
+# Суточные лимиты
 async def update_requests_db():
     # Подключаемся к базе данных
     async with aiosqlite.connect('Users.db') as connection:
@@ -195,6 +198,21 @@ async def get_state_ai(user_id):
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
                                         SELECT state_ai
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
+            result = await cursor.fetchone()
+            return result[0] if result else 0
+    except Exception as e:
+        print(f"Ошибка get_state_ai: {e}")
+        return None
+
+
+async def get_balans(user_id):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                        SELECT balans
                                         FROM users
                                         WHERE user_id = ?
                                         ''', (user_id,))
@@ -400,6 +418,34 @@ async def get_user_data(user_id):
                                         ''', (user_id,))
             result = await cursor.fetchone()
             return result
+    except Exception as e:
+        print(f"Ошибка calculate_remaining_tokens: {e}")
+        return None
+
+
+async def save_banking_details(user_id, text):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            await db.execute('''
+                                UPDATE users
+                                SET banking_details = ?
+                                WHERE user_id = ?
+                                ''', (text, user_id))  # Обнуляем историю чата
+            await db.commit()
+    except Exception as e:
+        print(f"Ошибка при обнулении чата: {e}")
+
+
+async def get_banking_details(user_id):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                        SELECT banking_details
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
+            result = await cursor.fetchone()
+            return result[0]
     except Exception as e:
         print(f"Ошибка calculate_remaining_tokens: {e}")
         return None

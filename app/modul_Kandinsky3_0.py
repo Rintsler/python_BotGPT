@@ -5,6 +5,17 @@ import requests
 from aiogram import types
 from aiogram.types import FSInputFile
 
+import requests
+
+import json
+import time
+import base64
+
+from random import randint as r
+from random import choice as ch
+
+import os
+
 
 class Text2ImageAPI:
 
@@ -20,14 +31,13 @@ class Text2ImageAPI:
         data = response.json()
         return data[0]['id']
 
-    async def generate(self, prompt, model, images=1, width=1024, height=1024, style=3):
-        styles = ["KANDINSKY", "UHD", "ANIME", "DEFAULT"]
+    async def generate(self, prompt, model, style, images=1, width=1024, height=1024):
         params = {
             "type": "GENERATE",
             "numImages": images,
             "width": width,
             "height": height,
-            "style": styles[style],
+            "style": style,
             "generateParams": {
                 "query": f"{prompt}"
             }
@@ -52,20 +62,18 @@ class Text2ImageAPI:
             await asyncio.sleep(delay)
 
 
-async def send_image_kandinsky(message: types.Message, text):
+async def send_image_kandinsky(message: types.Message, text, style):
     api = Text2ImageAPI('https://api-key.fusionbrain.ai/', '81BECD65C781605F64967084F161012B',
                         'A6B1748E5079BFE4B1F9CBC6A3EB4F50')
     model_id = await api.get_model()
-    uuid = await api.generate(text, model_id, style=3)
+    uuid = await api.generate(text, model_id, style)
     images = await api.check_generation(uuid)
     image = images[0]
 
     # Декодируем строку base64 в бинарные данные
     image_data = base64.b64decode(image)
 
-    with open(f"image_Kandinsky3_0/{message.from_user.id}.jpg", "wb") as file:
+    with open(f"image_Kandinsky3_0/{message.from_user.id}+{style}.jpg", "wb") as file:
         file.write(image_data)
 
-    photo = FSInputFile(f"image_Kandinsky3_0/{message.from_user.id}.jpg")
-    # Отправляем изображение в сообщении
-    await message.answer_photo(photo, caption="Нейросеть: Kandinsky")
+

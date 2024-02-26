@@ -1,22 +1,27 @@
+import ast
 import json
+import os
 import random
+from enum import member
+from aiogram.methods.send_media_group import SendMediaGroup
 import openai
 from aiogram import types, Bot
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile, InputMediaPhoto
+from aiogram.utils import media_group
 from aiogram.utils.payload import decode_payload
 from app.modul_Kandinsky3_0 import send_image_kandinsky
 from app.modul_Kandinsky2_2 import kandinsky2_2
-from app.moduls import generate_response, profile, counting_pay, Subscribe, calc_sum
+from app.moduls import generate_response, profile, counting_pay, Subscribe, calc_sum, ref_menu
 from app.update_keys import get_unused_key
 from data.config import bot, chat_id
 from data.db_app import (reg_user, new_chat, get_user_history, update_user_history,
                          add_response_to_history, set_state_ai, get_state_ai, add_user, update_requests, get_flag,
-                         get_req)
+                         get_req, save_banking_details, get_balans)
 from data.metadata import Metadata
-from nav.keyboard import inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai
+from nav.keyboard import (inline_markup_reg, menu_keyboard, menu_profile, inline_submit_preview, inline_tp, menu_ai,
+                          menu_profile_ref, inline_back_to_ref)
 from aiogram.utils.deep_linking import create_start_link
 from aiogram.filters import CommandObject
-from aiogram.enums import ParseMode
 
 options = [
     "🤔 Осторожно, работает умная машина...",
@@ -89,7 +94,7 @@ async def submit(call: types.CallbackQuery):
 
     if flag > 1:
         await bot.edit_message_text(
-            'У вас еще действует тариф, вся информация в вашем профиле',
+            'У вас еще действует тариф, вся информация в вашем личном кабинете',
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             reply_markup=inline_submit_preview
@@ -325,9 +330,9 @@ async def for_kandinsky2_2(call: types.CallbackQuery):
 # ======================================================================================================================
 #                               Выбор нейронки
 # ======================================================================================================================
-async def kandinsky(call: types.CallbackQuery):
+async def kandinsky3_0(call: types.CallbackQuery):
     user_id = call.from_user.id
-    state_ai = 'kandinsky'
+    state_ai = 'kandinsky3_0'
     await set_state_ai(user_id, state_ai)
     await call.message.answer('Ок! Дальше я на ваши сообщения буду отвечать изображениями 👩‍🎨\n\n'
                               'Формула запроса для красивой картинки\n'
@@ -369,7 +374,7 @@ async def delle_3(call: types.CallbackQuery):
 
 async def bot_dialog(call: types.CallbackQuery):
     user_id = call.from_user.id
-    state_ai = ''
+    state_ai = 'gpt'
     await set_state_ai(user_id, state_ai)
     await call.message.answer('Понял! Возвращаемся к обычному общению.')
 
@@ -390,11 +395,53 @@ async def send_image(message):
 
 
 # ======================================================================================================================
-#                                             Рефералка
+#                                             Реф ссылка
 # ======================================================================================================================
-async def get_ref(message: types.Message, ):
-    link = await create_start_link(bot, str(message.from_user.id), encode=True)
-    await message.answer(f"Ваша реферальная ссылка:\n{link}")
+async def get_ref(call: types.CallbackQuery):
+    link = await create_start_link(bot, str(call.from_user.id), encode=True)
+    await bot.edit_message_text(f"Ваша реферальная ссылка:\n{link}\n\n"
+                                f"Поделитесь ей вашим друзьям и получите бонус 💲. "
+                                f"🎁 Вы будете получать 10% с первой оплаты "
+                                f"тарифа каждого приглашенного вами пользователя.\n"
+                                f"💰 Баланс можно контролировать в личном кабинете.\n\n"
+                                f"Как можно использовать накопленный бонус:\n"
+                                f"• оплатить свой тариф или компенсировать часть его стоимости\n"
+                                f"• вывести на карту (в личного кабинете "
+                                f"добавьте ваши реквизиты для перевода 💳)",
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=inline_back_to_ref)
+
+
+# ======================================================================================================================
+#                                             Меню партнерки
+# ======================================================================================================================
+async def ref_program(call: types.CallbackQuery):
+    ref_text = await ref_menu()
+    await bot.edit_message_text(ref_text,
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=menu_profile_ref)
+
+
+async def requisites(call: types.CallbackQuery):
+    await set_state_ai(call.from_user.id, 'Ожидание реквизитов для вывода')
+    await bot.edit_message_text('Напишите мне ваши реквизиты, куда вам было бы удобно вывести ваш бонус.\n'
+                                'Это может быть, номер карты, номер телефона (для СБП).'
+                                'Данную информацию можно указать с пояснением (пример: +79991112244 '
+                                'сбербанк Иванов И.И.)',
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=inline_back_to_ref)
+
+
+async def get_the_money(call: types.CallbackQuery):
+    await set_state_ai(call.from_user.id, 'Ожидание суммы для вывода')
+    balans = await get_balans(call.from_user.id)
+    await bot.edit_message_text(f"Ваш баланс: {balans}\n\nНапишите боту сумму для вывода",
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=inline_back_to_ref)
 
 
 # ======================================================================================================================
@@ -402,18 +449,23 @@ async def get_ref(message: types.Message, ):
 # ======================================================================================================================
 async def echo(message: types.Message):
     user_id = message.from_user.id
-    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-    print(member)
-    if member.status != 'left':
+    member_check = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+    print(f"Проверка на подписку в новостном канале\n"
+          f"Статус: {member_check.status}\n"
+          f"ID: {member_check.user.id}\n"
+          f"username: {member_check.user.username}\n"
+          f"first_name: {member_check.user.first_name}\n"
+          f"is_bot: {member_check.user.is_bot}\n")
+
+    if member_check.status != 'left':
         text = message.text
-        flag = await get_flag(user_id)
         result = await get_req(user_id)
         if result:
             request, request_img = result
         # ==================================================================================================================
         #                                             Профиль
         # ==================================================================================================================
-        if text in ['📊 Профиль']:
+        if text in ['📊 Личный кабинет']:
             profile_text = await profile(user_id)
             await message.answer(profile_text, reply_markup=menu_profile)
         # ==================================================================================================================
@@ -425,18 +477,78 @@ async def echo(message: types.Message):
         # ==================================================================================================================
         #                                             Создать чат
         # ==================================================================================================================
-        elif text in ['👥 Создать чат']:
+        elif text in ['Начать общение с IZI']:
             await new_chat(user_id)
+            await set_state_ai(user_id, 'gpt')
             await message.answer("Новый чат создан! Теперь вы можете начать новый диалог.", reply_markup=menu_keyboard)
-        elif text in ['🗣 Пригласить друга']:
-            await get_ref(message)
         # ==================================================================================================================
         #                                             Любой запрос к боту
         # ==================================================================================================================
         else:
             state_ai = await get_state_ai(user_id)
-            if state_ai == 'delle2':
-                if request_img != 0:
+
+            if state_ai == 'Ожидание суммы для вывода':
+                text_request = await profile(user_id, 1)
+                balans = await get_balans(user_id)
+                if balans == 0:
+                    await message.answer(f"К сожалению вам пока ничего выводить, ваш баланс: {balans}",
+                                         reply_markup=inline_back_to_ref)
+                if balans >= int(text):
+                    await bot.send_message(6280608864, f'Заявка на вывод бонуса:\n\n{text_request}\n\n'
+                                                       f'На сумму: {text}')
+                    await message.answer(f"Заявка на вывод бонуса отправлена администратору, "
+                                         f"средства поступят в течении дня.",
+                                         reply_markup=inline_back_to_ref)
+                else:
+                    await message.answer(f"Вы указали некорректную сумму, ваш баланс: {balans}",
+                                         reply_markup=inline_back_to_ref)
+                await set_state_ai(user_id, 'gpt')
+
+            elif state_ai == 'Ожидание реквизитов для вывода':
+                await save_banking_details(user_id, text)
+                await message.answer(f"Данные для перевода бонуса на ваш счет сохранены: {text}",
+                                     reply_markup=inline_back_to_ref)
+                await set_state_ai(user_id, 'gpt')
+
+            elif state_ai == 'gpt':
+                if request != 0:
+                    user_question = message.text
+                    print(f"User question: {user_question}")
+                    # Отправляем анимацию перед запросом к OpenAI GPT
+                    processing_message = await message.answer(random.choice(options))
+
+                    # Получаем текущую историю пользователя
+                    chat_history, response_history = await get_user_history(user_id)
+
+                    chat_history = json.loads(chat_history) if chat_history else []
+                    response_history = json.loads(response_history) if response_history else []
+
+                    # Добавляем новое сообщение к истории
+                    chat_history.append({"role": "user", "content": user_question})
+
+                    # Обновляем историю в базе данных
+                    await update_user_history(user_id, chat_history, response_history)
+
+                    # Имитация анимации перед запросом к OpenAI GPT завершена
+
+                    response = await generate_response(user_id, chat_history, message, request, request_img)
+                    print(f"OpenAI response: {response}")
+
+                    # Удаляем сообщение с анимацией перед отправкой ответа
+                    await bot.delete_message(chat_id=processing_message.chat.id,
+                                             message_id=processing_message.message_id)
+
+                    # Добавляем ответ к истории ответов
+                    response_history.append({"role": "assistant", "content": response})
+
+                    await add_response_to_history(user_id, response_history)
+
+                    await message.answer(str(response), reply_markup=menu_keyboard)
+                else:
+                    await message.answer('Дневной лимит для ответов Izi исчерпан. Выберите тариф и продолжите 🛒',
+                                         reply_markup=inline_submit_preview)
+            elif request_img != 0:
+                if state_ai == 'delle2':
                     # Отправляем анимацию перед запросом к OpenAI GPT
                     message_animation = await message.answer(random.choice(options))
 
@@ -448,16 +560,28 @@ async def echo(message: types.Message):
                     # Удаляем сообщение с анимацией перед отправкой ответа
                     await bot.delete_message(chat_id=message_animation.chat.id,
                                              message_id=message_animation.message_id)
-                else:
-                    await message.answer(
-                        'Суточный лимит для генерации изображений исчерпан.',
-                        reply_markup=inline_submit_preview)
-            elif state_ai == 'kandinsky':
-                if request_img != 0:
+
+                elif state_ai == 'kandinsky3_0':
                     # Отправляем анимацию перед запросом к OpenAI GPT
                     message_animation = await message.answer(random.choice(options))
 
-                    await send_image_kandinsky(message, message.text)
+                    styles = ["KANDINSKY", "UHD", "ANIME", "DEFAULT"]
+                    for style in styles:
+                        await send_image_kandinsky(message, message.text, style)
+                        FSInputFile(f"image_Kandinsky3_0/{message.from_user.id}+{style}.jpg")
+
+                    image1 = InputMediaPhoto(type='photo', media=FSInputFile(
+                        f"image_Kandinsky3_0/{message.from_user.id}+KANDINSKY.jpg"))
+                    image2 = InputMediaPhoto(type='photo', media=FSInputFile(
+                        f"image_Kandinsky3_0/{message.from_user.id}+UHD.jpg"))
+                    image3 = InputMediaPhoto(type='photo', media=FSInputFile(
+                        f"image_Kandinsky3_0/{message.from_user.id}+ANIME.jpg"))
+                    image4 = InputMediaPhoto(type='photo', media=FSInputFile(
+                        f"image_Kandinsky3_0/{message.from_user.id}+DEFAULT.jpg"))
+
+                    media = [image1, image2, image3, image4]
+
+                    await bot.send_media_group(user_id, media)
 
                     if request_img > 0:
                         await update_requests(user_id, request, request_img - 1)
@@ -465,8 +589,8 @@ async def echo(message: types.Message):
                     # Удаляем сообщение с анимацией перед отправкой ответа
                     await bot.delete_message(chat_id=message_animation.chat.id,
                                              message_id=message_animation.message_id)
-            elif state_ai == 'kandinsky2_2':
-                if request_img != 0:
+
+                elif state_ai == 'kandinsky2_2':
                     # Отправляем анимацию перед запросом к OpenAI GPT
                     message_animation = await message.answer(random.choice(options))
 
@@ -478,46 +602,10 @@ async def echo(message: types.Message):
                     # Удаляем сообщение с анимацией перед отправкой ответа
                     await bot.delete_message(chat_id=message_animation.chat.id,
                                              message_id=message_animation.message_id)
-                else:
-                    await message.answer(
-                        'Суточный лимит для генерации изображений исчерпан.',
-                        reply_markup=inline_submit_preview)
-            elif flag > 0 and request != 0:
-                user_question = message.text
-                print(f"User question: {user_question}")
-                # Отправляем анимацию перед запросом к OpenAI GPT
-                processing_message = await message.answer(random.choice(options))
-
-                # Получаем текущую историю пользователя
-                chat_history, response_history = await get_user_history(user_id)
-
-                chat_history = json.loads(chat_history) if chat_history else []
-                response_history = json.loads(response_history) if response_history else []
-
-                # Добавляем новое сообщение к истории
-                chat_history.append({"role": "user", "content": user_question})
-
-                # Обновляем историю в базе данных
-                await update_user_history(user_id, chat_history, response_history)
-
-                # Имитация анимации перед запросом к OpenAI GPT завершена
-
-                response = await generate_response(user_id, chat_history, message, request, request_img)
-                print(f"OpenAI response: {response}")
-
-                # Удаляем сообщение с анимацией перед отправкой ответа
-                await bot.delete_message(chat_id=processing_message.chat.id,
-                                         message_id=processing_message.message_id)
-
-                # Добавляем ответ к истории ответов
-                response_history.append({"role": "assistant", "content": response})
-
-                await add_response_to_history(user_id, response_history)
-
-                await message.answer(str(response), reply_markup=menu_keyboard)
-            else:
-                await message.answer('Дневной лимит для ответов Izi исчерпан. Выберите тариф и продолжите 🛒',
-                                     reply_markup=inline_submit_preview)
+            elif request_img == 0:
+                await message.answer(
+                    'Суточный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',
+                    reply_markup=inline_submit_preview)
     else:
         await message.answer("Для использования бота подпишите на наш канал ✔️",
                              reply_markup=inline_markup_reg)
