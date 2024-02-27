@@ -113,3 +113,23 @@ inline_markup_reg = InlineKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+# ======================================================================================================================
+# InLine Button оплата с бонусом
+# ======================================================================================================================
+inline_Pay_b_m = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text='💳 Оплатить картой', callback_data="money_in_pay")],
+        [InlineKeyboardButton(text='🗳 Использовать бонус', callback_data="bonus_in_pay")]
+    ],
+    resize_keyboard=True
+)
+# ======================================================================================================================
+# InLine Button подписка на канал
+# ======================================================================================================================
+inline_markup_reg = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text='👤 Перейти в канал', url='https://t.me/+Myoz4F6P9c9hYTIy')],
+        [InlineKeyboardButton(text='🗳 Готово', callback_data="reg")]
+    ],
+    resize_keyboard=True
+)

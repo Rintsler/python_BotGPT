@@ -36,4 +36,4 @@ async def kandinsky2_2(message: types.Message, text):
 
     photo = FSInputFile(f"image_Kandinsky2_2/{message.from_user.id}.jpg")
     # Отправляем изображение в сообщении
-    await message.answer_photo(photo, 0)
+    await message.answer_photo(photo, caption='Нейросеть Кандинский 2.2')

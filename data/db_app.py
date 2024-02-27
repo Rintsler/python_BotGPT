@@ -137,20 +137,30 @@ async def update_requests_db():
     print("!!!!!!!!!!!!!!!!!!  Суточные лимиты обновлены  !!!!!!!!!!!!!!!!!!")
 
 
+async def update_balans(value, user_id):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            await db.execute('''
+                                UPDATE users
+                                SET balans = ?
+                                WHERE user_id = ?
+                            ''', (value, user_id))
+            await db.commit()
+    except Exception as e:
+        print(f"Error update_balans: {e}")
+
+
 async def sum_balans():
     try:
         async with aiosqlite.connect('Users.db') as db:
-            cursor = await db.execute('''
-                                        SELECT balans FROM users WHERE balans > 0
-                                    ''')
-            rows = await cursor.fetchone()
-
+            cursor = await db.execute('SELECT balans FROM users WHERE balans > 0')
+            rows = await cursor.fetchall()
+            sum_row = 0
             for row in rows:
-                sum_row = + row
-
+                sum_row += row[0]
             return sum_row
     except Exception as e:
-        print(f"Error update_remaining_days: {e}")
+        print(f"Error sum_balans: {e}")
 
 
 async def calculate_remaining_days(sub_date_end):
@@ -272,10 +282,9 @@ async def add_user(user_id, username, referrer, ref):
 async def update_subscribe(flag, sub_date, sub_date_end, request, request_img, period, last_amount, user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
-            cursor = await db.execute('''
-                                                    SELECT referrer, last_amount FROM users WHERE user_id = ?
-                                                ''', (user_id,))
-            referrer, l_amount = await cursor.fetchone()
+            cursor = await db.execute('SELECT referrer, last_amount FROM users WHERE user_id = ?', (user_id,))
+            result = await cursor.fetchone()
+            referrer, l_amount = result
 
             if referrer != 0 and l_amount == 0:
                 await db.execute('''
@@ -299,8 +308,18 @@ async def update_subscribe(flag, sub_date, sub_date_end, request, request_img, p
                             ''', (flag, sub_date, sub_date_end, request, request_img, period,
                                   last_amount, last_amount, user_id))
             await db.commit()
+
+            # Рассчитываем разницу в днях
+            difference = await calculate_remaining_days(sub_date_end)
+            # Обновляем остаток дней в БД
+            await db.execute('''
+                                                    UPDATE users
+                                                    SET remaining_days = ?
+                                                    WHERE user_id = ?
+                                                    ''', (difference, user_id))
+            await db.commit()
     except Exception as e:
-        print(f"Error updating user: {e}")
+        print(f"Error update_subscribe: {e}")
 
 
 async def new_chat(user_id):

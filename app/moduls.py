@@ -1,12 +1,15 @@
 import traceback
 import openai
-from aiogram.types import LabeledPrice
+from aiogram.types import LabeledPrice, CallbackQuery, Message
+from magic_filter import F
+
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.config import bot, YOOTOKEN, admins_id
-from data.db_app import get_user_data, update_requests, sum_balans
+from data.db_app import get_user_data, update_requests, sum_balans, get_balans, update_subscribe, update_balans
 from data.metadata import Metadata
-from nav.keyboard import inline_kb_pay
+from nav.keyboard import inline_kb_pay, inline_Pay_b_m, menu_keyboard
 import asyncio
+from datetime import datetime
 
 
 async def generate_response(user_id, chat_history, message, request, request_img):
@@ -204,10 +207,22 @@ async def calc_sum(sub_sum):
     Metadata.sub_sum3 = sub_sum * 10
 
 
-async def counting_pay(factor, user_id):
-    sub_sum = Metadata.sub_sum * factor
-    Metadata.sub_sum_db = Metadata.sub_sum_db * factor
+async def bonus_in_pay(call: CallbackQuery):
+    if Metadata.bonus >= Metadata.sub_sum_db:
+        Metadata.bonus = Metadata.bonus - Metadata.sub_sum_db
+        await update_balans(Metadata.bonus, Metadata.user_id)
+        await successful_pay(Metadata.user_id)
+    else:
+        Metadata.result_sub_sum = (Metadata.sub_sum_db - Metadata.bonus) * 100
+        Metadata.payment_flag = True
+        await order()
 
+
+async def money_in_pay(call: CallbackQuery):
+    await order()
+
+
+async def order():
     description = ''
     if Metadata.subscription == 'Light':
         description = Metadata.description_Light
@@ -217,13 +232,14 @@ async def counting_pay(factor, user_id):
         description = Metadata.description_Premium
 
     await bot.send_invoice(
-        chat_id=user_id,
+        chat_id=Metadata.user_id,
         title='Квитанция к оплате',
         description='Тариф',
         payload='month_sub',
         provider_token=YOOTOKEN,
         currency='RUB',
-        prices=[LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=sub_sum)],
+        prices=[
+            LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=Metadata.result_sub_sum)],
         max_tip_amount=1000000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
         start_parameter='Izi_bot',
@@ -246,3 +262,60 @@ async def counting_pay(factor, user_id):
         reply_markup=inline_kb_pay,
         request_timeout=15
     )
+
+
+async def successful_pay(user_id):
+    sub_date = datetime.now().date()
+    sub_date_end = ''
+    if Metadata.payment_flag:
+        await update_balans(0, user_id)
+        Metadata.payment_flag = False
+
+    # Увеличить sub_date на месяц
+    if Metadata.sub_period == 1:
+        sub_date_end = sub_date.replace(month=(sub_date.month + 1) % 12)
+
+    # Увеличить sub_date на пол года
+    elif Metadata.sub_period == 6:
+        if sub_date.month + 6 <= 12:
+            sub_date_end = sub_date.replace(month=sub_date.month + 6)
+        else:
+            sub_date_end = sub_date.replace(year=sub_date.year + 1, month=(sub_date.month + 6) % 12,
+                                            day=sub_date.day)
+    # Увеличить sub_date на один год
+    elif Metadata.sub_period == 12:
+        sub_date_end = sub_date.replace(year=sub_date.year + 1)
+
+    sub_date = datetime.strftime(sub_date, '%d.%m.%Y')
+    sub_date_end = datetime.strftime(sub_date_end, '%d.%m.%Y')
+    if Metadata.subscription == 'Light':
+        request = 35
+        request_img = 15
+        await update_subscribe(2, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
+                               Metadata.sub_sum_db, user_id)
+    elif Metadata.subscription == 'Middle':
+        request = -1
+        request_img = 40
+        await update_subscribe(3, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
+                               Metadata.sub_sum_db, user_id)
+    elif Metadata.subscription == 'Premium':
+        request = -1
+        request_img = -1
+        await update_subscribe(4, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
+                               Metadata.sub_sum_db, user_id)
+
+    response_text = f'Вы подключили тариф {Metadata.subscription}, он будет действовать до {sub_date_end}. Спасибо!'
+    await bot.send_message(user_id, response_text, reply_markup=menu_keyboard)
+
+
+async def counting_pay(factor, user_id):
+    Metadata.bonus = await get_balans(user_id)
+    Metadata.result_sub_sum = Metadata.sub_sum * factor
+    Metadata.sub_sum_db = Metadata.sub_sum_db * factor
+    Metadata.user_id = user_id
+
+    if Metadata.bonus != 0:
+        await bot.send_message(user_id, text=f'Сумма к оплате составляет: {Metadata.sub_sum_db} руб.\n'
+                                             f'Сумма вашего бонуса: {Metadata.bonus} руб.', reply_markup=inline_Pay_b_m)
+    else:
+        await order()
