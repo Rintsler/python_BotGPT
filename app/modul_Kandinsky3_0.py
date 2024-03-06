@@ -1,20 +1,8 @@
 import asyncio
-import json
-import base64
-import requests
 from aiogram import types
-from aiogram.types import FSInputFile
-
 import requests
-
 import json
-import time
 import base64
-
-from random import randint as r
-from random import choice as ch
-
-import os
 
 
 class Text2ImageAPI:

@@ -1,15 +1,14 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
-
 # ======================================================================================================================
 # Buttons основное меню
 # ======================================================================================================================
 menu_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="📊 Личный кабинет")],
+        [KeyboardButton(text="👤 Ваш профиль")],
         [
-            KeyboardButton(text="Начать общение с IZI"),
-            KeyboardButton(text="🧠 Нейросеть")
+            KeyboardButton(text="🪄 Новая тема"),
+            KeyboardButton(text="🔮 Нейросети")
         ]
     ],
     resize_keyboard=True
@@ -31,7 +30,7 @@ menu_profile = InlineKeyboardMarkup(
 # ======================================================================================================================
 menu_profile_ref = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="🗣 Пригласить друга", callback_data='invite')],
+        [InlineKeyboardButton(text="👬 Пригласить друга", callback_data='invite')],
         [InlineKeyboardButton(text="💳 Добавить реквизиты для получения бонуса", callback_data='requisites')],
         [InlineKeyboardButton(text="💰 Вывести бонус", callback_data='get_the_money')],
         [InlineKeyboardButton(text="← назад", callback_data='back_to_profile')]
@@ -45,15 +44,18 @@ menu_profile_ref = InlineKeyboardMarkup(
 menu_ai = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Kandinsky 3.0", callback_data='kandinsky3_0'),
-            InlineKeyboardButton(text="Kandinsky 2.2", callback_data='kandinsky2_2')
+            InlineKeyboardButton(text="🏞 Kandinsky 3.0", callback_data='kandinsky3_0'),
+            InlineKeyboardButton(text="🏞 Kandinsky 2.2", callback_data='kandinsky2_2')
         ],
         [
-            InlineKeyboardButton(text="Dell-e 2", callback_data='delle_2'),
-            InlineKeyboardButton(text="Dell-e 3", callback_data='delle_3')
+            InlineKeyboardButton(text="🏞 Dell-e 2", callback_data='delle_2'),
+            InlineKeyboardButton(text="🏞 Dell-e 3", callback_data='delle_3')
         ],
         [
-            InlineKeyboardButton(text="Текстовый диалог с Ботом", callback_data='bot_dialog')
+            InlineKeyboardButton(text="🏞 Обработка изображения", callback_data='novita_img2img'),
+        ],
+        [
+            InlineKeyboardButton(text="📝 Текстовый диалог с Ботом", callback_data='bot_dialog')
         ]
     ],
     resize_keyboard=True
@@ -119,17 +121,8 @@ inline_markup_reg = InlineKeyboardMarkup(
 inline_Pay_b_m = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text='💳 Оплатить картой', callback_data="money_in_pay")],
-        [InlineKeyboardButton(text='🗳 Использовать бонус', callback_data="bonus_in_pay")]
-    ],
-    resize_keyboard=True
-)
-# ======================================================================================================================
-# InLine Button подписка на канал
-# ======================================================================================================================
-inline_markup_reg = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text='👤 Перейти в канал', url='https://t.me/+Myoz4F6P9c9hYTIy')],
-        [InlineKeyboardButton(text='🗳 Готово', callback_data="reg")]
+        [InlineKeyboardButton(text='🗳 Использовать бонус', callback_data="bonus_in_pay")],
+        [InlineKeyboardButton(text="✖️ Отмена", callback_data='cancel_payment')]
     ],
     resize_keyboard=True
 )

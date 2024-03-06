@@ -91,7 +91,7 @@ async def get_unused_key():
                 print("Нет доступных ключей или запросов недостаточно, ожидание...")
                 await asyncio.sleep(10)
     except Exception as e:
-        print(f"Error getting unused key: {e}")
+        print(f"Ошибка при получении неиспользуемого ключа: {e}")
 
 
 async def log_error(api_key, error_text):

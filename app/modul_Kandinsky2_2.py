@@ -1,13 +1,6 @@
-import base64
-import io
-from aiogram.types import PhotoSize
-from aiogram.types import FSInputFile, InputFile
-from io import BytesIO, StringIO
+from aiogram.types import FSInputFile
 from kandinsky2 import get_kandinsky2
 from aiogram import types
-from PIL import Image
-
-from data.config import bot
 
 
 async def kandinsky2_2(message: types.Message, text):

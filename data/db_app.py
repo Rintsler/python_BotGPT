@@ -233,6 +233,21 @@ async def get_balans(user_id):
         return None
 
 
+async def get_user(user_id):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            cursor = await db.execute('''
+                                        SELECT id
+                                        FROM users
+                                        WHERE user_id = ?
+                                        ''', (user_id,))
+            result = await cursor.fetchone()
+            return result[0] if result else 0
+    except Exception as e:
+        print(f"Ошибка get_user: {e}")
+        return None
+
+
 # Добавление нового пользователя в базу данных
 async def reg_user(user_id, registration_date, request, request_img, flag):
     try:

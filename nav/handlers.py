@@ -6,12 +6,8 @@ from data.config import bot
 from data.controllers import (start_cmd, echo, submit, back_to_profile, tp, bot_dialog, check_sub, delle_2, delle_3,
                               Light, Middle, Full, month, month_6, year, cancel_payment, back_to_subscriptions,
                               for_kandinsky2_2, get_ref, ref_program, requisites, get_the_money,
-                              kandinsky3_0)
-from data.db_app import update_subscribe, update_balans
-from data.metadata import Metadata
+                              kandinsky3_0, for_novita_img2img)
 from aiogram import types
-from datetime import datetime
-from nav.keyboard import menu_keyboard
 
 router: Router = Router()
 router.message.register(start_cmd, CommandStart())
@@ -39,6 +35,7 @@ router.callback_query.register(kandinsky3_0, F.data == 'kandinsky3_0')
 router.callback_query.register(for_kandinsky2_2, F.data == 'kandinsky2_2')
 router.callback_query.register(delle_2, F.data == 'delle_2')
 router.callback_query.register(delle_3, F.data == 'delle_3')
+router.callback_query.register(for_novita_img2img, F.data == 'novita_img2img')
 router.callback_query.register(bot_dialog, F.data == 'bot_dialog')
 
 router.callback_query.register(back_to_profile, F.data == 'back_to_profile')

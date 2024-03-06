@@ -1,8 +1,9 @@
 import traceback
 import openai
-from aiogram.types import LabeledPrice, CallbackQuery, Message
+from aiogram.types import LabeledPrice, CallbackQuery, Message, FSInputFile, InputMediaPhoto
 from magic_filter import F
 
+from app.modul_Kandinsky3_0 import send_image_kandinsky
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.config import bot, YOOTOKEN, admins_id
 from data.db_app import get_user_data, update_requests, sum_balans, get_balans, update_subscribe, update_balans
@@ -12,18 +13,25 @@ import asyncio
 from datetime import datetime
 
 
+# REQUEST =============================================================
 async def generate_response(user_id, chat_history, message, request, request_img):
+    # Поиск свободного ключа
     api_key = await get_unused_key()
-    while not api_key:
-        print("Нет свободных ключей")
-        await asyncio.sleep(10)
-        api_key = await get_unused_key()
+    # Если ключ не получен, вызываем ошибку
+    if api_key is None:
+        bot.send_message(user_id, "Мы испытываем высокую нагрузку, "
+                                  "Ваш запрос не может быть обработан, "
+                                  "пожалуйста, попробуйте позднее")
     try:
         await update_key_status(api_key, 1)
 
         system_message = {"role": "system", "content": "Тебя зовут Izi, ты девушка, ты девочка, ты женщина,"
                                                        "отвечай всегда в женском роде и немного пренебрежительно,"
-                                                       "отвечать можешь иногда с сарказмом"}
+                                                       "отвечать можешь иногда с сарказмом,"
+                                                       "на любой вопрос о том, кто ты, отвечай как угодно с лубыми"
+                                                       " шутками, сарказмом, но главное чтобы "
+                                                       "фигурировало твое имя Izi и то, что тебя создала группа "
+                                                       "разработчиков, но ты не знаешь как их зовут"}
         messages = [system_message] + chat_history[-20:]  # Передаем последние два сообщения
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo-16k",
@@ -43,47 +51,15 @@ async def generate_response(user_id, chat_history, message, request, request_img
         return otvet
     except (openai.error.RateLimitError, openai.error.Timeout) as e:
         error_text = traceback.format_exc()
-        print(f"Ошибка RateLimit: {e}")
         await log_error(api_key, error_text)
-        return await handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img)
+        print(f"Ошибка: {e}")
+        return generate_response(user_id, chat_history, message, request, request_img)
 
 
-async def handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img):
-    await set_key_status_to_2(api_key)
-    print("Пытаюсь отправить второй раз")
-    api_key = await get_unused_key()
-    print("Пытаюсь отправить второй раз2")
-    while not api_key:
-        # print("Нет свободных ключей")
-        await asyncio.sleep(10)
-        api_key = await get_unused_key()
-    try:
-        await update_key_status(api_key, 1)
-        print("Пытаюсь отправить второй раз3")
-        system_message = {"role": "system", "content": "You are a helpful assistant"}
-        messages = [system_message] + chat_history[-5:]  # Передаем последние два сообщения
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            api_key=api_key,
-            messages=messages,
-            temperature=0.8,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
-        )
-        otvet = response['choices'][0]['message']['content'].strip()
-        print("Пытаюсь отправить второй раз")
-        # Обновляем столбец tokens_used в базе данных
-        await update_requests(user_id, request, request_img)
-        await reset_key_status(api_key)
-        return otvet
-    except (openai.error.RateLimitError, openai.error.Timeout) as e:
-        error_text = traceback.format_exc()
-        print(f"Ошибка RateLimit: {e}")
-        await log_error(api_key, error_text)
-        return await handle_rate_limit_error(user_id, api_key, chat_history, message, request, request_img)
+# END REQUEST =============================================================
 
 
+# TEXT OUTPUT ==========================================================
 async def profile(user_id, switch=0):
     # Получаем данные пользователя из функции get_user_data
     (pk, state_ai, user_id, flag, username, registration_date, chat_history,
@@ -115,20 +91,20 @@ async def profile(user_id, switch=0):
 
     # Формируем текст профиля
     profile_text = (
-        "<b>Ваш профиль</b>\n\n"
-        f"👤 Ваш ID: {user_id}\n\n"
-        f"🗓 Дата регистрации: {registration_date}\n\n"
-        "<b>Тариф:</b>\n"
-        f"  • Тип: {subscribe}\n"
-        f"  • Период действия: {string_period}"
-        "<b>Суточный лимит:</b>\n\n"
-        f"📝 Запросы: {request}\n\n"
-        f"🏞 Изображения: {request_img}\n\n"
-        f"📆 До окончания тарифа: {string_remaining_days}"
-        "<b>Реферальная программа:</b>\n\n"
-        f"🤝 Вы привели: {string_referrals}"
-        f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
-        f"💳 Ваши реквизиты для вывода: {banking_details}"
+        "@bold<b>Ваш профиль</b></u>\n\n"
+        f"👤 <code>Ваш ID: {user_id}</code>\n\n"
+        f"🗓 <code>Дата регистрации: {registration_date}</code>\n\n"
+        "</u><b>Тариф:</b></u>\n"
+        f"  <code>• Тип: {subscribe}</code>\n"
+        f"  <code>• Период действия: {string_period}</code>\n"
+        "</u><b>Суточный лимит:</b></u>\n\n"
+        f"📝 <code>Запросы: {request}</code>\n\n"
+        f"🏞 <code>Изображения: {request_img}</code>\n\n"
+        f"📆 <code>До окончания тарифа: {string_remaining_days}</code>\n\n"
+        "</u><b>Реферальная программа:</b></u>\n\n"
+        f"🤝 <code>Вы привели: {string_referrals}</code>\n\n"
+        f"💳 <code>Баланс по реферальной\nпрограмме: {string_balans}</code>\n\n"
+        f"💳 <code>Ваши реквизиты для вывода: {banking_details}</code>"
     )
     string_sum_balans = await sum_balans()
 
@@ -153,7 +129,7 @@ async def profile(user_id, switch=0):
         f"🤝 Привел: {string_referrals}"
         f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
         f"💳 Реквизиты для вывода: {banking_details}"
-        f"\n\n\n💳 Общий баланс по всем пользователям реферальной программы: "
+        f"\n\n\n💳 <b>Общий баланс по всем пользователям реферальной программы:</b> "
         f"{string_sum_balans}")
 
     return order_profile_text if switch else profile_text
@@ -161,7 +137,7 @@ async def profile(user_id, switch=0):
 
 async def ref_menu():
     ref_text = (
-        'Добро пожаловать в нашу партнерскую программу!'
+        'Добро пожаловать в нашу партнерскую программу! '
         'Мы предлагаем вам уникальную возможность зарабатывать, привлекая новых пользователей '
         'в нашу платформу. Как партнер, вы будете получать 10% от первого платежа каждого '
         'привлеченного вами пользователя.\n\n'
@@ -185,7 +161,7 @@ async def ref_menu():
 
 async def Subscribe():
     subscribe_text = (
-        'Хочешь дальше общаться с ботом Izi, выбери подходящий себе тариф 👇\n\n'
+        'Для пользования ботом Izi, выбери подходящий себе тариф 👇\n\n'
         '⭐️ Тариф Базовый:'
         '\n35 запросов в сутки - на ответы Izi в режиме текстового диалога'
         '\n15 запросов в сутки - Izi сгенерирует изображение по вашему запросу'
@@ -201,28 +177,36 @@ async def Subscribe():
     return subscribe_text
 
 
+# END TEXT OUTPUT ==========================================================
+
+
 async def calc_sum(sub_sum):
-    Metadata.sub_sum1 = sub_sum * 1
-    Metadata.sub_sum2 = sub_sum * 5
-    Metadata.sub_sum3 = sub_sum * 10
+    if Metadata.calc_sum_flag:
+        Metadata.sub_sum1 = sub_sum * 1
+        Metadata.sub_sum2 = sub_sum * 5
+        Metadata.sub_sum3 = sub_sum * 10
+        Metadata.calc_sum_flag = False
 
 
+# PAY====================================================
 async def bonus_in_pay(call: CallbackQuery):
-    if Metadata.bonus >= Metadata.sub_sum_db:
-        Metadata.bonus = Metadata.bonus - Metadata.sub_sum_db
+    if Metadata.bonus >= Metadata.sub_sum:
+        Metadata.bonus = Metadata.bonus - Metadata.sub_sum
         await update_balans(Metadata.bonus, Metadata.user_id)
         await successful_pay(Metadata.user_id)
     else:
-        Metadata.result_sub_sum = (Metadata.sub_sum_db - Metadata.bonus) * 100
+        amount = (Metadata.sub_sum - Metadata.bonus) * 100
         Metadata.payment_flag = True
-        await order()
+        await order(amount)
 
 
 async def money_in_pay(call: CallbackQuery):
-    await order()
+    amount = Metadata.sub_sum * 100
+    await order(amount)
 
 
-async def order():
+# Действие до оплаты
+async def order(amount):
     description = ''
     if Metadata.subscription == 'Light':
         description = Metadata.description_Light
@@ -239,7 +223,7 @@ async def order():
         provider_token=YOOTOKEN,
         currency='RUB',
         prices=[
-            LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=Metadata.result_sub_sum)],
+            LabeledPrice(label='Тариф ' + Metadata.subscription + '\n' + description, amount=amount)],
         max_tip_amount=1000000,
         suggested_tip_amounts=[5000, 10000, 15000, 20000],
         start_parameter='Izi_bot',
@@ -264,9 +248,11 @@ async def order():
     )
 
 
+# Действие после оплаты
 async def successful_pay(user_id):
     sub_date = datetime.now().date()
     sub_date_end = ''
+
     if Metadata.payment_flag:
         await update_balans(0, user_id)
         Metadata.payment_flag = False
@@ -292,17 +278,17 @@ async def successful_pay(user_id):
         request = 35
         request_img = 15
         await update_subscribe(2, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
-                               Metadata.sub_sum_db, user_id)
+                               Metadata.sub_sum, user_id)
     elif Metadata.subscription == 'Middle':
         request = -1
         request_img = 40
         await update_subscribe(3, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
-                               Metadata.sub_sum_db, user_id)
+                               Metadata.sub_sum, user_id)
     elif Metadata.subscription == 'Premium':
         request = -1
         request_img = -1
         await update_subscribe(4, sub_date, sub_date_end, request, request_img, Metadata.sub_period,
-                               Metadata.sub_sum_db, user_id)
+                               Metadata.sub_sum, user_id)
 
     response_text = f'Вы подключили тариф {Metadata.subscription}, он будет действовать до {sub_date_end}. Спасибо!'
     await bot.send_message(user_id, response_text, reply_markup=menu_keyboard)
@@ -310,12 +296,49 @@ async def successful_pay(user_id):
 
 async def counting_pay(factor, user_id):
     Metadata.bonus = await get_balans(user_id)
-    Metadata.result_sub_sum = Metadata.sub_sum * factor
-    Metadata.sub_sum_db = Metadata.sub_sum_db * factor
+    Metadata.sub_sum = Metadata.sub_sum_db * factor
     Metadata.user_id = user_id
 
     if Metadata.bonus != 0:
-        await bot.send_message(user_id, text=f'Сумма к оплате составляет: {Metadata.sub_sum_db} руб.\n'
+        await bot.send_message(user_id, text=f'Сумма к оплате составляет: {Metadata.sub_sum} руб.\n'
                                              f'Сумма вашего бонуса: {Metadata.bonus} руб.', reply_markup=inline_Pay_b_m)
     else:
-        await order()
+        amount = Metadata.sub_sum * 100
+        await order(amount)
+
+
+# END PAY====================================================
+
+
+# FOR Kandinsky 3.0 =============================================================
+async def media_group_img(message):
+    styles = ["KANDINSKY", "UHD", "ANIME", "DEFAULT"]
+    for style in styles:
+        await send_image_kandinsky(message, message.text, style)
+        FSInputFile(f"image_Kandinsky3_0/{message.from_user.id}+{style}.jpg")
+
+    image1 = InputMediaPhoto(type='photo', media=FSInputFile(
+        f"image_Kandinsky3_0/{message.from_user.id}+KANDINSKY.jpg"), caption='Стиль: KANDINSKY')
+    image2 = InputMediaPhoto(type='photo', media=FSInputFile(
+        f"image_Kandinsky3_0/{message.from_user.id}+UHD.jpg"), caption='Стиль: UHD')
+    image3 = InputMediaPhoto(type='photo', media=FSInputFile(
+        f"image_Kandinsky3_0/{message.from_user.id}+ANIME.jpg"), caption='Стиль: ANIME')
+    image4 = InputMediaPhoto(type='photo', media=FSInputFile(
+        f"image_Kandinsky3_0/{message.from_user.id}+DEFAULT.jpg"), caption='Стиль: DEFAULT')
+
+    media = [image1, image2, image3, image4]
+
+    return media
+
+
+# FOR Start =============================================================
+async def media_group_img_start():
+    image1 = InputMediaPhoto(type='photo', media=FSInputFile(f"res/Kandinsky2_2.jpg"),
+                             caption='Нейросеть Кандинский 2.2\nЗапрос: "red cat, 4k photo"')
+    image2 = InputMediaPhoto(type='photo', media=FSInputFile(f"res/Kandinsky3_0.jpg"),
+                             caption='Нейросеть Кандинский 3.0\nЗапрос: "Изящество и красота '
+                                     'могут проявляться даже в самых суровых условиях первобытностиColor '
+                                     'Grading, Shot on 70mm, Daguerrotype, F/2.8, CRT"')
+    media = [image1, image2]
+
+    return media
