@@ -1,9 +1,7 @@
-import logging
 import os
 import requests
 import openai
 from aiogram import Bot, Dispatcher
-import aiohttp
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
@@ -33,6 +31,8 @@ try:
 except requests.RequestException as e:
     # Вывод ошибки, если что-то пошло не так
     print(f"Ошибка подключения к ПРОКСИ: {e}")
+
+
 
 SQLALCHEMY_URL = "sqlite+aiosqlite:///db.sqlite3"
 

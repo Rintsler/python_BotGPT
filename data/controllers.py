@@ -2,6 +2,7 @@ import json
 import random
 import openai
 from aiogram import types, Bot
+from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.payload import decode_payload
 from app.modul_Kandinsky2_2 import kandinsky2_2
@@ -18,6 +19,11 @@ from nav.keyboard import (inline_markup_reg, menu_keyboard, menu_profile, inline
                           menu_profile_ref, inline_back_to_ref)
 from aiogram.utils.deep_linking import create_start_link
 from aiogram.filters import CommandObject
+from aiogram.fsm.state import StatesGroup, State
+
+
+class StateBot(StatesGroup):
+    banking_details_input = State()
 
 
 async def start_cmd(message: types.Message, command: CommandObject):
@@ -37,7 +43,7 @@ async def start_cmd(message: types.Message, command: CommandObject):
 
             if ref_username:
                 check = await get_user(user_id)
-                if check:
+                if not check:
                     # Обновляем данные пользователя
                     await add_user(user_id, username, referrer, True)
 
@@ -62,7 +68,7 @@ async def start_cmd(message: types.Message, command: CommandObject):
                                                                   f'Как только от него поступит оплата, на ваш '
                                                                   f'баланс будет начислено 10% от его суммы оплаты!')
                 else:
-                    await message.answer('<b>🧐 Вы уже регистрировались, условия по реферальной ссылке'
+                    await message.answer('<b>🧐 Вы уже регистрировались, условия по реферальной ссылке '
                                          'работают только для новых пользователей</b>')
             else:
                 await message.answer('<b>🧐 Не найдено информации о пользователе, который вас пригласил. '
@@ -71,7 +77,7 @@ async def start_cmd(message: types.Message, command: CommandObject):
             await message.answer('Вы перешли по своей же ссылке 😄')
     else:
         check = await get_user(user_id)
-        if check:
+        if not check:
             # Если в БД нет пользователя, добавляем
             await add_user(user_id, username, referrer, False)
         await message.answer(
@@ -115,6 +121,45 @@ async def submit(call: types.CallbackQuery):
                                     chat_id=call.message.chat.id,
                                     message_id=call.message.message_id,
                                     reply_markup=inline_submit_preview)
+
+
+# =====================================================================================================================
+# ПРОВЕРКА НА ЧЛЕНСТВО В КАНАЛЕ
+# =====================================================================================================================
+async def check_sub(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    await bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
+    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+    print('Проверка на членство в канале: ', member)
+    if member.status != 'left':
+        flag = await get_flag(user_id)
+
+        result = await get_req(user_id)
+        if result:
+            request, request_img = result
+        if flag is None or flag == 0:
+            flag = 1
+            request = 30
+            request_img = 10
+            registration_date = call.message.date.strftime('%d.%m.%Y')
+            await reg_user(user_id, registration_date, request, request_img, flag)
+            await call.message.answer(
+                'Спасибо за подписку на наш канал! У вас 30 бесплатных запросов диалогах с Izi и '
+                '10 запросов на генерацию изображений 🫶🏻'
+                'По исчерпании этого пакета, ежедневного бесплатно предоставляются 10 запросов для диалогов и '
+                '5 запросов на генерацию изображений.',
+                reply_markup=menu_keyboard)
+        elif flag == 1:
+            await call.message.answer(
+                f'Спасибо за подписку на наш новостной канал! Вам доступно на данный момент бесплатно {request} '
+                f'запросов для диалога и {request_img} запросов для генерации изображений 🫶🏻',
+                reply_markup=menu_keyboard)
+        else:
+            await call.message.answer(
+                f'Спасибо что вы с нами! У вас действует подписка, вся доступна по кнопке "<b>Ваши данные</b>" 😉',
+                reply_markup=menu_keyboard)
+    else:
+        await call.message.answer('Для начала подпишись на наш новостной канал', reply_markup=inline_markup_reg)
 
 
 # ======================================================================================================================
@@ -259,7 +304,8 @@ async def cancel_payment(call: types.CallbackQuery):
 #                               Техподдержка
 # ======================================================================================================================
 async def tp(call: types.CallbackQuery):
-    await bot.edit_message_text('Этот раздел еще в разработке...',
+    await bot.edit_message_text('По всем вопросам пишите нашему рядовому сотруднику, он обработает ваш запрос:'
+                                ' https://t.me/Rintzler',
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
                                 reply_markup=inline_tp)
@@ -278,50 +324,10 @@ async def back_to_profile(call: types.CallbackQuery):
 
 
 # ======================================================================================================================
-#                               Проверка на членство в канале
-# ======================================================================================================================
-async def check_sub(call: types.CallbackQuery):
-    user_id = call.from_user.id
-    await bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
-    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-    print('Проверка на членство в канале: ', member)
-    if member.status != 'left':
-        flag = await get_flag(user_id)
-
-        result = await get_req(user_id)
-        if result:
-            request, request_img = result
-        if flag is None or flag == 0:
-            flag = 1
-            request = 30
-            request_img = 10
-            registration_date = call.message.date.strftime('%d.%m.%Y')
-            await reg_user(user_id, registration_date, request, request_img, flag)
-            await call.message.answer(
-                'Спасибо за подписку на наш канал! У вас 30 бесплатных запросов диалогах с Izi и '
-                '10 запросов на генерацию изображений 🫶🏻'
-                'По исчерпании этого пакета, ежедневного бесплатно предоставляются 10 запросов для диалогов и '
-                '5 запросов на генерацию изображений.',
-                reply_markup=menu_keyboard)
-        elif flag == 1:
-            await call.message.answer(
-                f'Спасибо за подписку на наш новостной канал! Вам доступно на данный момент бесплатно {request} '
-                f'запросов для диалога и {request_img} запросов для генерации изображений 🫶🏻',
-                reply_markup=menu_keyboard)
-        else:
-            await call.message.answer(
-                f'Спасибо что вы с нами! У вас действует подписка, вся доступна по кнопке "<b>Ваши данные</b>" 😉',
-                reply_markup=menu_keyboard)
-    else:
-        await call.message.answer('Для начала подпишись на наш новостной канал', reply_markup=inline_markup_reg)
-
-
-# ======================================================================================================================
 #                               Выбор нейронки
 # ======================================================================================================================
 async def for_kandinsky2_2(call: types.CallbackQuery):
-    await call.answer('Этот раздел в разработке, ожидаем, будет объявление',
-                      show_alert=True)
+    await call.answer('Данный раздел находится в разработке, но скоро будет доступен ⏳', show_alert=True)
 
 
 async def for_novita_img2img(call: types.CallbackQuery):
@@ -353,9 +359,9 @@ async def kandinsky3_0(call: types.CallbackQuery):
                               'реализм, фотореалистичный стиль')
 
 
-async def delle_2(call: types.CallbackQuery):
+async def dalle_2(call: types.CallbackQuery):
     user_id = call.from_user.id
-    state_ai = 'delle2'
+    state_ai = 'dalle2'
     await set_state_ai(user_id, state_ai)
     await call.message.answer(f'<b>Ок! Дальше я на ваши сообщения буду отвечать изображениями</b> 👩‍🎨\n\n'
                               f'Для этой нейросети, запрос рекомендуется писать на английском, '
@@ -373,7 +379,7 @@ async def delle_2(call: types.CallbackQuery):
                               f'плюшевые зайцы сражаются с инопланетянами.')
 
 
-async def delle_3(call: types.CallbackQuery):
+async def dalle_3(call: types.CallbackQuery):
     await call.answer('Данный раздел находится в разработке, но скоро будет доступен ⏳', show_alert=True)
 
 
@@ -396,7 +402,7 @@ async def send_image(message):
         n=1,
         size="1024x1024",
     )
-    await message.answer_photo(response["data"][0]["url"])
+    await message.answer_photo(response["data"][0]["url"], caption="Нейросеть: Dall-e 2")
 
 
 # ======================================================================================================================
@@ -429,8 +435,7 @@ async def ref_program(call: types.CallbackQuery):
                                 reply_markup=menu_profile_ref)
 
 
-async def requisites(call: types.CallbackQuery):
-    await set_state_ai(call.from_user.id, 'Ожидание реквизитов для вывода')
+async def requisites(call: types.CallbackQuery, state: FSMContext):
     await bot.edit_message_text('Напишите мне ваши реквизиты, куда вам было бы удобно вывести ваш бонус.\n'
                                 'Это может быть, номер карты, номер телефона (для СБП).'
                                 'Данную информацию можно указать с пояснением (пример: +79991112244 '
@@ -438,6 +443,7 @@ async def requisites(call: types.CallbackQuery):
                                 chat_id=call.message.chat.id,
                                 message_id=call.message.message_id,
                                 reply_markup=inline_back_to_ref)
+    await state.set_state(StateBot.banking_details_input)
 
 
 async def get_the_money(call: types.CallbackQuery):
@@ -511,12 +517,6 @@ async def echo(message: types.Message):
                                          reply_markup=inline_back_to_ref)
                 await set_state_ai(user_id, 'gpt')
 
-            elif state_ai == 'Ожидание реквизитов для вывода':
-                await save_banking_details(user_id, text)
-                await message.answer(f"Данные для перевода бонуса на ваш счет сохранены: <b>{text}</b>",
-                                     reply_markup=inline_back_to_ref)
-                await set_state_ai(user_id, 'gpt')
-
             elif state_ai == 'gpt':
                 if request != 0:
                     user_question = message.text
@@ -551,7 +551,7 @@ async def echo(message: types.Message):
                     await message.answer('Дневной лимит для ответов Izi исчерпан. Выберите тариф и продолжите 🛒',
                                          reply_markup=inline_submit_preview)
             elif request_img != 0:
-                if state_ai == 'delle2':
+                if state_ai == 'dalle2':
                     # Отправляем анимацию перед запросом к OpenAI GPT
                     message_animation = await message.answer(random.choice(Metadata.options))
 
@@ -591,33 +591,6 @@ async def echo(message: types.Message):
                     await bot.delete_message(chat_id=message_animation.chat.id,
                                              message_id=message_animation.message_id)
 
-                elif state_ai == 'novita_img2img':
-                    # Отправляем анимацию перед запросом к OpenAI GPT
-                    message_animation = await message.answer(random.choice(Metadata.options))
-
-                    # Получаем список фотографий из сообщения
-                    photos = message.photo
-
-                    # Выбираем последнюю (максимального размера) фотографию из списка
-                    largest_photo = photos[-1]
-
-                    # Получаем идентификатор файла фотографии
-                    file_id = largest_photo.file_id
-
-                    # Используем метод бота для получения файла по его идентификатору
-                    file = await bot.get_file(file_id)
-
-                    # Получаем URL файла
-                    photo_url = file.file_path
-
-                    await novita_img2img(message, photo_url)
-
-                    if request_img > 0:
-                        await update_requests(user_id, request, request_img - 1)
-
-                    # Удаляем сообщение с анимацией перед отправкой ответа
-                    await bot.delete_message(chat_id=message_animation.chat.id,
-                                             message_id=message_animation.message_id)
             elif request_img == 0:
                 await message.answer(
                     'Суточный лимит для генерации изображений исчерпан. Выберите тариф и продолжите 🛒',

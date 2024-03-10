@@ -1,14 +1,16 @@
 import traceback
 import openai
+from aiogram.fsm.context import FSMContext
 from aiogram.types import LabeledPrice, CallbackQuery, Message, FSInputFile, InputMediaPhoto
 from magic_filter import F
 
 from app.modul_Kandinsky3_0 import send_image_kandinsky
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.config import bot, YOOTOKEN, admins_id
-from data.db_app import get_user_data, update_requests, sum_balans, get_balans, update_subscribe, update_balans
+from data.db_app import get_user_data, update_requests, sum_balans, get_balans, update_subscribe, update_balans, \
+    save_banking_details
 from data.metadata import Metadata
-from nav.keyboard import inline_kb_pay, inline_Pay_b_m, menu_keyboard
+from nav.keyboard import inline_kb_pay, inline_Pay_b_m, menu_keyboard, inline_back_to_ref
 import asyncio
 from datetime import datetime
 
@@ -25,13 +27,9 @@ async def generate_response(user_id, chat_history, message, request, request_img
     try:
         await update_key_status(api_key, 1)
 
-        system_message = {"role": "system", "content": "Тебя зовут Izi, ты девушка, ты девочка, ты женщина,"
+        system_message = {"role": "system", "content": "Тебя зовут Izi, ты девушка,"
                                                        "отвечай всегда в женском роде и немного пренебрежительно,"
-                                                       "отвечать можешь иногда с сарказмом,"
-                                                       "на любой вопрос о том, кто ты, отвечай как угодно с лубыми"
-                                                       " шутками, сарказмом, но главное чтобы "
-                                                       "фигурировало твое имя Izi и то, что тебя создала группа "
-                                                       "разработчиков, но ты не знаешь как их зовут"}
+                                                       "отвечать можешь иногда с сарказмом"}
         messages = [system_message] + chat_history[-20:]  # Передаем последние два сообщения
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo-16k",
@@ -91,20 +89,20 @@ async def profile(user_id, switch=0):
 
     # Формируем текст профиля
     profile_text = (
-        "@bold<b>Ваш профиль</b></u>\n\n"
-        f"👤 <code>Ваш ID: {user_id}</code>\n\n"
-        f"🗓 <code>Дата регистрации: {registration_date}</code>\n\n"
-        "</u><b>Тариф:</b></u>\n"
-        f"  <code>• Тип: {subscribe}</code>\n"
-        f"  <code>• Период действия: {string_period}</code>\n"
-        "</u><b>Суточный лимит:</b></u>\n\n"
-        f"📝 <code>Запросы: {request}</code>\n\n"
-        f"🏞 <code>Изображения: {request_img}</code>\n\n"
-        f"📆 <code>До окончания тарифа: {string_remaining_days}</code>\n\n"
-        "</u><b>Реферальная программа:</b></u>\n\n"
-        f"🤝 <code>Вы привели: {string_referrals}</code>\n\n"
-        f"💳 <code>Баланс по реферальной\nпрограмме: {string_balans}</code>\n\n"
-        f"💳 <code>Ваши реквизиты для вывода: {banking_details}</code>"
+        "<b>Ваш профиль</b>\n\n"
+        f"👤 Ваш ID: {user_id}\n\n"
+        f"🗓 Дата регистрации: {registration_date}\n\n"
+        "<b>Тариф:</b>\n"
+        f"  • Тип: {subscribe}\n"
+        f"  • Период действия: {string_period}\n"
+        "<b>Суточный лимит:</b>\n\n"
+        f"📝 Запросы: {request}\n\n"
+        f"🏞 Изображения: {request_img}\n\n"
+        f"📆 До окончания тарифа: {string_remaining_days}\n\n"
+        "<b>Реферальная программа:</b>\n\n"
+        f"🤝 Вы привели: {string_referrals}\n\n"
+        f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
+        f"💳 Ваши реквизиты для вывода: {banking_details}"
     )
     string_sum_balans = await sum_balans()
 
@@ -175,9 +173,6 @@ async def Subscribe():
         '☺️Каждый тариф можно оформить на разные периоды 🗓'
     )
     return subscribe_text
-
-
-# END TEXT OUTPUT ==========================================================
 
 
 async def calc_sum(sub_sum):
@@ -307,26 +302,22 @@ async def counting_pay(factor, user_id):
         await order(amount)
 
 
-# END PAY====================================================
-
-
-# FOR Kandinsky 3.0 =============================================================
 async def media_group_img(message):
-    styles = ["KANDINSKY", "UHD", "ANIME", "DEFAULT"]
+    styles = ["UHD", "ANIME", "DEFAULT"]
     for style in styles:
         await send_image_kandinsky(message, message.text, style)
         FSInputFile(f"image_Kandinsky3_0/{message.from_user.id}+{style}.jpg")
 
     image1 = InputMediaPhoto(type='photo', media=FSInputFile(
-        f"image_Kandinsky3_0/{message.from_user.id}+KANDINSKY.jpg"), caption='Стиль: KANDINSKY')
+        f"image_Kandinsky3_0/{message.from_user.id}+UHD.jpg"), caption='Нейросеть: Kandinsky 3.0\n'
+                                                                             'На ваш запрос сгенерировано '
+                                                                             '4 изображения с разными стилями')
     image2 = InputMediaPhoto(type='photo', media=FSInputFile(
-        f"image_Kandinsky3_0/{message.from_user.id}+UHD.jpg"), caption='Стиль: UHD')
+        f"image_Kandinsky3_0/{message.from_user.id}+ANIME.jpg"))
     image3 = InputMediaPhoto(type='photo', media=FSInputFile(
-        f"image_Kandinsky3_0/{message.from_user.id}+ANIME.jpg"), caption='Стиль: ANIME')
-    image4 = InputMediaPhoto(type='photo', media=FSInputFile(
-        f"image_Kandinsky3_0/{message.from_user.id}+DEFAULT.jpg"), caption='Стиль: DEFAULT')
+        f"image_Kandinsky3_0/{message.from_user.id}+DEFAULT.jpg"))
 
-    media = [image1, image2, image3, image4]
+    media = [image1, image2, image3]
 
     return media
 
@@ -342,3 +333,10 @@ async def media_group_img_start():
     media = [image1, image2]
 
     return media
+
+
+async def save_requisites(message: Message, state: FSMContext):
+    await save_banking_details(message.from_user.id, message.text)
+    await message.answer(f"Данные для перевода бонуса на ваш счет сохранены: <b>{message.text}</b>",
+                         reply_markup=inline_back_to_ref)
+    await state.clear()

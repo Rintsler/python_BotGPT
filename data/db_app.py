@@ -242,7 +242,7 @@ async def get_user(user_id):
                                         WHERE user_id = ?
                                         ''', (user_id,))
             result = await cursor.fetchone()
-            return result[0] if result else 0
+            return result
     except Exception as e:
         print(f"Ошибка get_user: {e}")
         return None
@@ -285,9 +285,9 @@ async def add_user(user_id, username, referrer, ref):
                     await db.commit()
             else:
                 await db.execute('''
-                    INSERT INTO users (user_id, username, referrer)
-                    VALUES (?, ?, ?)
-                ''', (user_id, username, referrer))
+                                    INSERT INTO users (user_id, username, referrer)
+                                    VALUES (?, ?, ?)
+                                ''', (user_id, username, referrer))
                 await db.commit()
     except Exception as e:
         print(f"Error add user: {e}")
@@ -373,7 +373,7 @@ async def get_req(user_id):
             result = await cursor.fetchone()
             return result
     except Exception as e:
-        print(f"Получить флаг из БД не получилось: {e}")
+        print(f"Получить реквесты из БД не получилось: {e}")
         return None
 
 
