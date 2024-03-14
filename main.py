@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import sys
-from data.config import dp, admins_id
-from data.db_app import create_info_key_table, create_table, scheduler
+from data.config import dp
+from data.db_app import create_info_key_table, create_table, scheduler, scheduler_keys
 from nav.handlers import *
 
 
@@ -21,9 +21,9 @@ if __name__ == '__main__':
 
         # Запуск планировщика в том же цикле событий asyncio
         loop.create_task(scheduler())
+        loop.create_task(scheduler_keys())
         loop.run_until_complete(main())
         asyncio.run(main())
-
 
     except KeyboardInterrupt:
         print('Бот завершил работу')

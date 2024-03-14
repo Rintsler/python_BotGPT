@@ -1,17 +1,14 @@
 import traceback
+from openai import OpenAIError
 import openai
-from aiogram.fsm.context import FSMContext
-from aiogram.types import LabeledPrice, CallbackQuery, Message, FSInputFile, InputMediaPhoto
-from magic_filter import F
-
+from aiogram.types import LabeledPrice, CallbackQuery, FSInputFile, InputMediaPhoto
 from app.modul_Kandinsky3_0 import send_image_kandinsky
 from app.update_keys import get_unused_key, update_key_status, reset_key_status, log_error, set_key_status_to_2
 from data.config import bot, YOOTOKEN, admins_id
-from data.db_app import get_user_data, update_requests, sum_balans, get_balans, update_subscribe, update_balans, \
-    save_banking_details
+from data.db_app import get_user_data, update_requests, sum_balans, get_balans, update_subscribe, update_balans
 from data.metadata import Metadata
-from nav.keyboard import inline_kb_pay, inline_Pay_b_m, menu_keyboard, inline_back_to_ref
-import asyncio
+from nav.keyboard import inline_kb_pay, inline_Pay_b_m, menu_keyboard
+import random
 from datetime import datetime
 
 
@@ -19,11 +16,12 @@ from datetime import datetime
 async def generate_response(user_id, chat_history, message, request, request_img):
     # Поиск свободного ключа
     api_key = await get_unused_key()
+
     # Если ключ не получен, вызываем ошибку
     if api_key is None:
-        bot.send_message(user_id, "Мы испытываем высокую нагрузку, "
-                                  "Ваш запрос не может быть обработан, "
-                                  "пожалуйста, попробуйте позднее")
+        await message.answer_sticker(random.choice(Metadata.stickers))
+        return "Мы испытываем высокую нагрузку, Ваш запрос не может быть обработан, пожалуйста, попробуйте позднее"
+
     try:
         await update_key_status(api_key, 1)
 
@@ -47,90 +45,89 @@ async def generate_response(user_id, chat_history, message, request, request_img
             await update_requests(user_id, request - 1, request_img)
         await reset_key_status(api_key)
         return otvet
-    except (openai.error.RateLimitError, openai.error.Timeout) as e:
+    except OpenAIError as e:
         error_text = traceback.format_exc()
         await log_error(api_key, error_text)
+        await set_key_status_to_2(api_key)
         print(f"Ошибка: {e}")
-        return generate_response(user_id, chat_history, message, request, request_img)
-
-
-# END REQUEST =============================================================
+        return await generate_response(user_id, chat_history, message, request, request_img)
 
 
 # TEXT OUTPUT ==========================================================
 async def profile(user_id, switch=0):
-    # Получаем данные пользователя из функции get_user_data
-    (pk, state_ai, user_id, flag, username, registration_date, chat_history,
-     response_history, request, request_img, period_sub, sub_date, sub_date_end,
-     remaining_days, referrer, referrals, last_amount, sum_amount, balans,
-     banking_details) = await get_user_data(user_id)
+    try:
+        # Получаем данные пользователя из функции get_user_data
+        (pk, state_ai, user_id, flag, username, registration_date, chat_history,
+         response_history, request, request_img, period_sub, sub_date, sub_date_end,
+         remaining_days, referrer, referrals, last_amount, sum_amount, balans,
+         banking_details) = await get_user_data(user_id)
 
-    # Форматируем период подписки
-    string_period = f'{sub_date} - {sub_date_end}\n\n' if sub_date_end is not None else '\n\n'
+        # Форматируем период подписки
+        string_period = f'{sub_date} - {sub_date_end}' if sub_date_end is not None else ''
 
-    # Форматируем referrals
-    string_referrals = f'{referrals} пользователя(ей)\n\n' if referrals is not None else '\n\n'
+        # Форматируем referrals
+        string_referrals = f'{referrals} пользователя(ей)' if referrals is not None else ''
 
-    # Форматируем remaining_days
-    string_remaining_days = f'{remaining_days} дня(ей)\n\n' if remaining_days is not None else '\n\n'
+        # Форматируем remaining_days
+        string_remaining_days = f'{remaining_days} дня(ей)' if remaining_days is not None else ''
 
-    # Форматируем balans
-    string_balans = f'{balans} руб.' if balans is not None else ''
+        # Форматируем balans
+        string_balans = f'{balans} руб.' if balans is not None else ''
 
-    request = 'Безлимит' if request < 0 else request
-    request_img = 'Безлимит' if request_img < 0 else request_img
+        request = 'Безлимит' if request < 0 else request
+        request_img = 'Безлимит' if request_img < 0 else request_img
 
-    # Определяем тип подписки
-    subscribe = {
-        2: "Базовый",
-        3: "Расширенный",
-        4: "Премиум"
-    }.get(flag, '')
+        # Определяем тип подписки
+        subscribe = {
+            2: "Базовый",
+            3: "Расширенный",
+            4: "Премиум"
+        }.get(flag, '')
 
-    # Формируем текст профиля
-    profile_text = (
-        "<b>Ваш профиль</b>\n\n"
-        f"👤 Ваш ID: {user_id}\n\n"
-        f"🗓 Дата регистрации: {registration_date}\n\n"
-        "<b>Тариф:</b>\n"
-        f"  • Тип: {subscribe}\n"
-        f"  • Период действия: {string_period}\n"
-        "<b>Суточный лимит:</b>\n\n"
-        f"📝 Запросы: {request}\n\n"
-        f"🏞 Изображения: {request_img}\n\n"
-        f"📆 До окончания тарифа: {string_remaining_days}\n\n"
-        "<b>Реферальная программа:</b>\n\n"
-        f"🤝 Вы привели: {string_referrals}\n\n"
-        f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
-        f"💳 Ваши реквизиты для вывода: {banking_details}"
-    )
-    string_sum_balans = await sum_balans()
+        # Формируем текст профиля
+        profile_text = (
+            "•••••<b>Ваш профиль</b>•••••\n\n"
+            f"  • 👤 Ваш ID: {user_id}\n"
+            f"  • 🗓 Дата регистрации: {registration_date}\n"
+            "\n<b>Тариф:</b>\n"
+            f"  • Тип: {subscribe}\n"
+            f"  • Период действия: {string_period}\n"
+            f"  • До окончания тарифа: {string_remaining_days}\n"
+            "\n<b>Суточный лимит:</b>\n"
+            f"  • Запросы: {request}\n"
+            f"  • Изображения: {request_img}\n"
+            "\n<b>Реферальная программа:</b>\n"
+            f"  • 🤝 Вы привели: {string_referrals}\n"
+            f"  • 🎫 Баланс по реферальной\nпрограмме: {string_balans}\n"
+            f"  • 💳 Ваши реквизиты для вывода бонуса: {banking_details}"
+        )
 
-    full_profile_text = (
-            profile_text +
-            f"\n\n\n💳 Общий баланс по всем пользователям реферальной программы: "
-            f"{string_sum_balans}")
+        string_sum_balans = await sum_balans()
+        admin_profile_text = (
+                profile_text +
+                f"\n\n📊 <b>Общий баланс по всем пользователям реферальной программы: {string_sum_balans}</b>"
+        )
 
-    profile_text = full_profile_text if user_id == admins_id[0] or user_id == admins_id[1] else profile_text
+        profile_text = admin_profile_text if user_id == admins_id[0] or user_id == admins_id[1] else profile_text
 
-    order_profile_text = (
-        f"👤 ID: {user_id}\n\n"
-        f"🗓 Дата регистрации: {registration_date}\n\n"
-        "<b>Тариф:</b>\n"
-        f"  • Тип: {subscribe}\n"
-        f"  • Период действия: {string_period}"
-        "<b>Суточный лимит:</b>\n\n"
-        f"📝 Запросы: {request}\n\n"
-        f"🏞 Изображения: {request_img}\n\n"
-        f"📆 До окончания тарифа: {string_remaining_days}"
-        "<b>Реферальная программа:</b>\n\n"
-        f"🤝 Привел: {string_referrals}"
-        f"💳 Баланс по реферальной\nпрограмме: {string_balans}\n\n"
-        f"💳 Реквизиты для вывода: {banking_details}"
-        f"\n\n\n💳 <b>Общий баланс по всем пользователям реферальной программы:</b> "
-        f"{string_sum_balans}")
+        order_profile_text = (
+            f"•••••<b>ЗАЯВКА НА ВЫВОД БОНУСА</b>•••••\n\n"
+            f"  • 👤 ID: {user_id}\n"
+            f"  • 🗓 Дата регистрации: {registration_date}\n"
+            "\n<b>Тариф:</b>\n"
+            f"  • Тип: {subscribe}\n"
+            f"  • Период действия: {string_period}\n"
+            f"  • До окончания тарифа: {string_remaining_days}\n"
+            "\n<b>Реферальная программа:</b>\n"
+            f"  • 🤝 Рефералов: {string_referrals}\n"
+            f"  • 🎫 Баланс по реферальной\nпрограмме: {string_balans}\n"
+            f"  • 💳 Реквизиты для вывода бонуса: {banking_details}"
+            f"\n\n📊 <b>Общий баланс по всем пользователям реферальной программы: {string_sum_balans}</b>"
+        )
 
-    return order_profile_text if switch else profile_text
+        return order_profile_text if switch else profile_text
+    except Exception as e:
+        await bot.send_message(user_id, "Профиль пуст")
 
 
 async def ref_menu():
@@ -145,7 +142,7 @@ async def ref_menu():
         'Программа проста и прозрачна: вы привлекаете новых пользователей с помощью '
         'уникальной реферальной ссылки, и когда они регистрируются и осуществляют '
         'свой первый платеж, вы получаете 10% от суммы этого платежа. Ваши заработки '
-        'неограничены и зависят только от количества привлеченных вами пользователей.\n\n'
+        'неограниченны и зависят только от количества привлеченных вами пользователей.\n\n'
         'Мы предоставляем вам все необходимые инструменты и поддержку для успешного '
         'привлечения пользователей. У вас будет доступ к статистике, включающей '
         'информацию о количестве привлеченных пользователей и заработанных комиссиях. '
@@ -170,7 +167,7 @@ async def Subscribe():
         '\n\n'
         '⭐️ Тариф Премиум:'
         '\nПолный безлимит на все 😋\n\n'
-        '☺️Каждый тариф можно оформить на разные периоды 🗓'
+        '☺️Каждый тариф можно оформить на 3 разных периода 🗓'
     )
     return subscribe_text
 
@@ -310,33 +307,30 @@ async def media_group_img(message):
 
     image1 = InputMediaPhoto(type='photo', media=FSInputFile(
         f"image_Kandinsky3_0/{message.from_user.id}+UHD.jpg"), caption='Нейросеть: Kandinsky 3.0\n'
-                                                                             'На ваш запрос сгенерировано '
-                                                                             '4 изображения с разными стилями')
+                                                                       f'На ваш запрос "<code>{message.text}</code>" '
+                                                                       f'сгенерировано 3 изображения с разными '
+                                                                       f'стилями.')
     image2 = InputMediaPhoto(type='photo', media=FSInputFile(
         f"image_Kandinsky3_0/{message.from_user.id}+ANIME.jpg"))
     image3 = InputMediaPhoto(type='photo', media=FSInputFile(
         f"image_Kandinsky3_0/{message.from_user.id}+DEFAULT.jpg"))
 
     media = [image1, image2, image3]
-
     return media
 
 
 # FOR Start =============================================================
 async def media_group_img_start():
     image1 = InputMediaPhoto(type='photo', media=FSInputFile(f"res/Kandinsky2_2.jpg"),
-                             caption='Нейросеть Кандинский 2.2\nЗапрос: "red cat, 4k photo"')
-    image2 = InputMediaPhoto(type='photo', media=FSInputFile(f"res/Kandinsky3_0.jpg"),
-                             caption='Нейросеть Кандинский 3.0\nЗапрос: "Изящество и красота '
-                                     'могут проявляться даже в самых суровых условиях первобытностиColor '
-                                     'Grading, Shot on 70mm, Daguerrotype, F/2.8, CRT"')
+                             caption='<b><u>Примеры генераций изображений</u></b>'
+                                     '\n\n<b>Нейросеть <i>Кандинский 2.2</i></b>'
+                                     '\nЗапрос: "<code>red cat, 4k photo</code>"'
+                                     '\n\n<b>Нейросеть <i>Кандинский 3.0</i></b>'
+                                     '\nЗапрос: "<code>Изящество и красота '
+                                     'могут проявляться даже в самых суровых условиях первобытности Color '
+                                     'Grading, Shot on 70mm, Daguerrotype, F/2.8, CRT</code>"'
+                             )
+    image2 = InputMediaPhoto(type='photo', media=FSInputFile(f"res/Kandinsky3_0.jpg"))
+
     media = [image1, image2]
-
     return media
-
-
-async def save_requisites(message: Message, state: FSMContext):
-    await save_banking_details(message.from_user.id, message.text)
-    await message.answer(f"Данные для перевода бонуса на ваш счет сохранены: <b>{message.text}</b>",
-                         reply_markup=inline_back_to_ref)
-    await state.clear()

@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta
 import aiosqlite
 
@@ -7,10 +6,12 @@ async def update_expired_keys():
     try:
         async with aiosqlite.connect('Api_keys.db') as db:
             async with db.execute(
-                    '''SELECT * 
+                    '''
+                    SELECT * 
                     FROM info_key 
                     WHERE status_key=2 
-                    AND (julianday("now") - julianday(status_change)) * 24 * 60 > 1'''
+                    AND (julianday("now") - julianday(status_change)) * 24 * 60 > 1
+                    '''
             ) as cursor:
                 expired_keys = await cursor.fetchall()
 
@@ -26,10 +27,12 @@ async def update_days_keys():
     try:
         async with aiosqlite.connect('Api_keys.db') as db:
             async with db.execute(
-                    '''SELECT * 
+                    '''
+                    SELECT * 
                     FROM info_key 
                     WHERE status_key=3 
-                    AND (julianday("now") - julianday(status_change)) * 24 > 24'''
+                    AND (julianday("now") - julianday(status_change)) * 24 > 24
+                    '''
             ) as cursor:
                 expired_keys = await cursor.fetchall()
 
@@ -59,16 +62,6 @@ async def update_one_keys():
         print(f"Error updating one keys: {e}")
 
 
-async def schedule_thread():
-    while True:
-        await asyncio.gather(
-            update_expired_keys(),
-            update_days_keys(),
-            update_one_keys()
-        )
-        await asyncio.sleep(1)
-
-
 async def get_unused_key():
     try:
         async with aiosqlite.connect('Api_keys.db') as db:
@@ -87,9 +80,10 @@ async def get_unused_key():
                             (unused_key_info[1],))
                         await db.commit()
                     else:
+                        print(unused_key_info[1])
                         return unused_key_info[1]  # Возвращаем API ключ
                 print("Нет доступных ключей или запросов недостаточно, ожидание...")
-                await asyncio.sleep(10)
+                return None
     except Exception as e:
         print(f"Ошибка при получении неиспользуемого ключа: {e}")
 

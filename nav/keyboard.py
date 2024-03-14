@@ -13,7 +13,6 @@ menu_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
-
 # ======================================================================================================================
 # InLine Buttons меню профиля
 # ======================================================================================================================
@@ -50,9 +49,6 @@ menu_ai = InlineKeyboardMarkup(
         [
             InlineKeyboardButton(text="🏞 Dell-e 2", callback_data='delle_2'),
             InlineKeyboardButton(text="🏞 Dell-e 3", callback_data='delle_3')
-        ],
-        [
-            InlineKeyboardButton(text="🏞 Обработка изображения", callback_data='novita_img2img'),
         ],
         [
             InlineKeyboardButton(text="📝 Текстовый диалог с Ботом", callback_data='bot_dialog')

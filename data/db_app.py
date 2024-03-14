@@ -3,6 +3,7 @@ import json
 import traceback
 import aiosqlite
 from datetime import datetime, timedelta
+from app.update_keys import update_days_keys, update_one_keys, update_expired_keys
 from data.config import bot
 
 
@@ -178,10 +179,18 @@ async def calculate_remaining_days(sub_date_end):
         return None
 
 
+async def scheduler_keys():
+    while True:
+        await update_expired_keys()
+        await update_one_keys()
+        await asyncio.sleep(60)
+
+
 async def scheduler():
     while True:
         current_time = datetime.now().strftime('%H:%M')
         if current_time == '04:00':
+            await update_days_keys()
             await update_tariffs_sub()
             await asyncio.sleep(30)
             await update_requests_db()
@@ -457,20 +466,7 @@ async def get_user_data(user_id):
         return None
 
 
-async def save_banking_details(user_id, text):
-    try:
-        async with aiosqlite.connect('Users.db') as db:
-            await db.execute('''
-                                UPDATE users
-                                SET banking_details = ?
-                                WHERE user_id = ?
-                                ''', (text, user_id))  # Обнуляем историю чата
-            await db.commit()
-    except Exception as e:
-        print(f"Ошибка при обнулении чата: {e}")
-
-
-async def get_banking_details(user_id):
+async def get_reqisists(user_id):
     try:
         async with aiosqlite.connect('Users.db') as db:
             cursor = await db.execute('''
@@ -483,3 +479,16 @@ async def get_banking_details(user_id):
     except Exception as e:
         print(f"Ошибка calculate_remaining_tokens: {e}")
         return None
+
+
+async def save_banking_details(user_id, text):
+    try:
+        async with aiosqlite.connect('Users.db') as db:
+            await db.execute('''
+                                UPDATE users
+                                SET banking_details = ?
+                                WHERE user_id = ?
+                                ''', (text, user_id))  # Обнуляем историю чата
+            await db.commit()
+    except Exception as e:
+        print(f"Ошибка при обнулении чата: {e}")

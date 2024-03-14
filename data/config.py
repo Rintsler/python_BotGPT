@@ -33,19 +33,18 @@ except requests.RequestException as e:
     print(f"Ошибка подключения к ПРОКСИ: {e}")
 
 
-
 SQLALCHEMY_URL = "sqlite+aiosqlite:///db.sqlite3"
 
 # ТЕСТ
-BOT_TOKEN = '6961722181:AAHb8Djor842kI7oIEkO6GuSzZhMIoimQCM'
+# BOT_TOKEN = '6961722181:AAHb8Djor842kI7oIEkO6GuSzZhMIoimQCM'
 # тест
-YOOTOKEN = '1744374395:TEST:4f8afe3cb5414f582b71'
+# YOOTOKEN = '1744374395:TEST:4f8afe3cb5414f582b71'
 
 # ОРИГИНАЛ
-# BOT_TOKEN = '6384872240:AAFeFBDTmyE-LRKPU4Dwl5PUTNtIwV5pA4Y'
+BOT_TOKEN = '6384872240:AAFeFBDTmyE-LRKPU4Dwl5PUTNtIwV5pA4Y'
 OPENAI_API_KEY = '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'
 # ОРИГИНАЛ
-# YOOTOKEN = '390540012:LIVE:46409'
+YOOTOKEN = '390540012:LIVE:46409'
 
 storage = MemoryStorage()
 
